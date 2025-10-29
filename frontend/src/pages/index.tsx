@@ -3,10 +3,18 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
+import { useUIStore } from "@/stores/uiStore";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: projects = [] } = useProjects();
+
+  const {currentProjectId, setCurrentProject} = useUIStore();
+
+  function projectSelect(projectId: string): void {
+    setCurrentProject(projectId)
+    router.push(`/projects/${projectId}/`)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 p-8">
@@ -44,7 +52,7 @@ export default function DashboardPage() {
               <Card
                 key={project.id}
                 className="group hover:shadow-xl hover:scale-[1.02] transition-all duration-200 cursor-pointer border border-slate-200/80 bg-white/80 backdrop-blur-sm"
-                onClick={() => router.push(`/projects/${project.id}/`)}
+                onClick={() => projectSelect(project.id)}
               >
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold text-slate-800 group-hover:text-sky-700 transition-colors">
