@@ -41,7 +41,14 @@ const Sidebar = () => {
   const { data: project } = useProject(currentProjectId || ""); // Fetch the current project
   const [activeSection, setActiveSection] = useState<"docs" | "kanban">("docs");
 
-  console.log(currentProjectId);
+  // Sync activeSection with current route
+  useEffect(() => {
+    if (router.asPath.includes('/kanban')) {
+      setActiveSection('kanban');
+    } else if (router.asPath.includes('/docs')) {
+      setActiveSection('docs');
+    }
+  }, [router.asPath]);
 
   if (!currentProjectId) {
     return (
