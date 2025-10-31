@@ -13,14 +13,14 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
   const { data: fetchedBoard, isLoading } = useKanban(projectId);
   const { boards, setBoard, moveCard } = useKanbanStore();
 
-  // Initialize board from fetch or use persisted data
+  // Initialize board from backend only if not already in store
   useEffect(() => {
     if (fetchedBoard && !boards[projectId]) {
       setBoard(projectId, fetchedBoard);
     }
   }, [fetchedBoard, projectId, boards, setBoard]);
 
-  // Get the current board from Zustand store
+  // Always use the Zustand store as source of truth (it syncs with backend)
   const board = boards[projectId] || fetchedBoard;
 
   const onDragEnd = (result: DropResult) => {

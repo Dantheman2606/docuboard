@@ -5,14 +5,23 @@ import { useRouter } from "next/router";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjects } from "@/hooks/useProjects";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { FileText, Grid, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Grid, ChevronLeft, ChevronRight, Plus, Home, Trash2 } from "lucide-react";
 import { useProject } from "@/hooks/useProject";
-
-
-import { useEffect } from "react";
+import { useDocuments } from "@/hooks/useDocuments";
+import { useDocumentStore } from "@/stores/documentStore";
+import { AddDocModal } from "@/features/editor/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 
 export function useSyncProjectId() {
@@ -39,7 +48,12 @@ const Sidebar = () => {
   const { currentProjectId, toggleSidebar, isSidebarOpen } = useUIStore();
   const { data: projects } = useProjects(); // Fetch all projects
   const { data: project } = useProject(currentProjectId || ""); // Fetch the current project
+  const { data: documents } = useDocuments(currentProjectId || ""); // Fetch documents from backend
   const [activeSection, setActiveSection] = useState<"docs" | "kanban">("docs");
+  const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const { deleteDocument } = useDocumentStore();
+  const queryClient = useQueryClient();
 
   // Sync activeSection with current route
   useEffect(() => {
@@ -70,6 +84,27 @@ const Sidebar = () => {
     }
   };
 
+  const handleDeleteDocument = async () => {
+    if (!deleteDocId) return;
+    
+    // Check if we're currently on the document being deleted
+    const isCurrentDoc = router.asPath.includes(`/docs/${deleteDocId}`);
+    
+    // Delete the document
+    deleteDocument(deleteDocId);
+    
+    // Invalidate queries to refetch updated data
+    await queryClient.invalidateQueries({ queryKey: ['documents', currentProjectId] });
+    await queryClient.invalidateQueries({ queryKey: ['project', currentProjectId] });
+    
+    // If we're on the document being deleted, navigate away
+    if (isCurrentDoc) {
+      handleNavigate(`/projects/${currentProjectId}`);
+    }
+    
+    setDeleteDocId(null);
+  };
+
   return (
     <aside
       className={cn(
@@ -90,6 +125,22 @@ const Sidebar = () => {
           aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
         >
           {isSidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+        </Button>
+      </div>
+
+      {/* Back to Projects Button */}
+      <div className="px-2 py-2 border-b">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start gap-2",
+            !isSidebarOpen && "justify-center px-2"
+          )}
+          onClick={() => handleNavigate('/')}
+          aria-label="Back to projects"
+        >
+          <Home size={18} />
+          {isSidebarOpen && <span>All Projects</span>}
         </Button>
       </div>
 
@@ -132,27 +183,94 @@ const Sidebar = () => {
       <ScrollArea className="flex-1 px-2 py-3">
         {activeSection === "docs" ? (
           <div className="space-y-1">
-            {project?.docs?.map((doc: { id: string; title: string }) => (
-              <button
+            {/* Add New Doc Button */}
+            <button
+              onClick={() => setIsAddDocModalOpen(true)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
+                !isSidebarOpen && "justify-center"
+              )}
+              aria-label="Create new document"
+            >
+              <Plus size={16} className="text-primary" />
+              {isSidebarOpen && (
+                <span className="text-primary font-medium">New Doc</span>
+              )}
+            </button>
+
+            {/* Documents from backend */}
+            {documents?.map((doc) => (
+              <div
                 key={doc.id}
-                onClick={() =>
-                  handleNavigate(`/projects/${project.id}/docs/${doc.id}`)
-                }
                 className={cn(
-                  "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors",
+                  "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors group",
                   router.asPath.includes(`/docs/${doc.id}`)
                     ? "bg-muted font-medium"
                     : ""
                 )}
-                aria-label={`Open document ${doc.title}`}
               >
-                <FileText size={16} className="text-muted-foreground" />
-                {isSidebarOpen && <span className="truncate">{doc.title}</span>}
-              </button>
+                <button
+                  onClick={() =>
+                    handleNavigate(`/projects/${currentProjectId}/docs/${doc.id}`)
+                  }
+                  className="flex items-center gap-2 flex-1 text-left min-w-0"
+                  aria-label={`Open document ${doc.title}`}
+                >
+                  <FileText size={16} className="text-muted-foreground flex-shrink-0" />
+                  {isSidebarOpen && <span className="truncate">{doc.title}</span>}
+                </button>
+                {isSidebarOpen && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteDocId(doc.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
+                    aria-label={`Delete ${doc.title}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         ) : null}
       </ScrollArea>
+
+      {/* Add Doc Modal */}
+      {currentProjectId && (
+        <AddDocModal
+          isOpen={isAddDocModalOpen}
+          onClose={() => setIsAddDocModalOpen(false)}
+          projectId={currentProjectId}
+        />
+      )}
+
+      {/* Delete Document Confirmation Dialog */}
+      <Dialog open={!!deleteDocId} onOpenChange={(open) => !open && setDeleteDocId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDocId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteDocument}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 };

@@ -1,21 +1,24 @@
 // /features/kanban/hooks/useKanban.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { projects } from "@/lib/mockData";
+// Commented out mock data - now using backend API
+// import { projects } from "@/lib/mockData";
 import type { KanbanBoard, Card } from "@/lib/mockData";
+import { api } from "@/lib/api";
 
 /**
- * Custom hook for fetching Kanban board data
- * Currently fetches from mock data, but can be easily replaced with real API calls
+ * Custom hook for fetching Kanban board data from backend
  */
 export const useKanban = (projectId: string) => {
   return useQuery({
     queryKey: ["kanban", projectId],
     queryFn: async (): Promise<KanbanBoard | null> => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      
-      const project = projects.find((p) => p.id === projectId);
-      return project?.board || null;
+      try {
+        const board = await api.getKanbanBoard(projectId);
+        return board as any; // Type conversion between API and mock data types
+      } catch (error) {
+        console.error('Failed to fetch kanban board:', error);
+        return null;
+      }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled: !!projectId,

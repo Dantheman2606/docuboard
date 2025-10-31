@@ -3,10 +3,19 @@ import { useState } from "react";
 import { Draggable } from "@hello-pangea/dnd";
 import { Card as CardType } from "@/lib/mockData";
 import { Card } from "@/components/ui/card";
-import { Calendar, User } from "lucide-react";
+import { Calendar, User, Trash2 } from "lucide-react";
 import { InlineEditor } from "./InlineEditor";
 import { useKanbanStore } from "@/stores/kanbanStore";
 import { useRouter } from "next/router";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface KanbanCardProps {
   card: CardType;
@@ -27,9 +36,10 @@ const labelColors: Record<string, string> = {
 export function KanbanCard({ card, index }: KanbanCardProps) {
   const router = useRouter();
   const { id: projectId } = router.query;
-  const { updateCard } = useKanbanStore();
+  const { updateCard, deleteCard } = useKanbanStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleTitleUpdate = (newTitle: string) => {
     if (newTitle.trim() && newTitle !== card.title) {
@@ -43,7 +53,13 @@ export function KanbanCard({ card, index }: KanbanCardProps) {
     }
   };
 
+  const handleDelete = () => {
+    deleteCard(projectId as string, card.id);
+    setIsDeleteDialogOpen(false);
+  };
+
   return (
+    <>
     <Draggable draggableId={card.id} index={index}>
       {(provided, snapshot) => (
         <div
@@ -73,27 +89,39 @@ export function KanbanCard({ card, index }: KanbanCardProps) {
             </div>
 
             <div className="space-y-3">
-              {/* Editable Title */}
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditingTitle(true);
-                }}
-                className={`${!isEditingTitle && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
-              >
-                {isEditingTitle ? (
-                  <InlineEditor
-                    content={card.title}
-                    placeholder="Card title..."
-                    onUpdate={handleTitleUpdate}
-                    onBlur={() => setIsEditingTitle(false)}
-                    className="font-medium text-sm text-gray-900 dark:text-gray-100"
-                  />
-                ) : (
-                  <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                    {card.title}
-                  </h3>
-                )}
+              {/* Title and Delete Button Row */}
+              <div className="flex items-start justify-between gap-2">
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingTitle(true);
+                  }}
+                  className={`flex-1 ${!isEditingTitle && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
+                >
+                  {isEditingTitle ? (
+                    <InlineEditor
+                      content={card.title}
+                      placeholder="Card title..."
+                      onUpdate={handleTitleUpdate}
+                      onBlur={() => setIsEditingTitle(false)}
+                      className="font-medium text-sm text-gray-900 dark:text-gray-100"
+                    />
+                  ) : (
+                    <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 leading-tight">
+                      {card.title}
+                    </h3>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                  aria-label="Delete card"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
 
               {/* Editable Description */}
@@ -154,5 +182,31 @@ export function KanbanCard({ card, index }: KanbanCardProps) {
         </div>
       )}
     </Draggable>
+    {/* Delete Confirmation Dialog */}
+    <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Delete Card</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete "{card.title}"? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setIsDeleteDialogOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+          >
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
