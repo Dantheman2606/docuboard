@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { FileText, Grid, ChevronLeft, ChevronRight, Plus, Home, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileText, Grid, ChevronLeft, ChevronRight, Plus, Home, Trash2, LogOut, LayoutGrid } from "lucide-react";
 import { useProject } from "@/hooks/useProject";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useDocumentStore } from "@/stores/documentStore";
@@ -21,7 +22,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 
 export function useSyncProjectId() {
@@ -51,9 +53,19 @@ const Sidebar = () => {
   const { data: documents } = useDocuments(currentProjectId || ""); // Fetch documents from backend
   const [activeSection, setActiveSection] = useState<"docs" | "kanban">("docs");
   const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
+  const [isAddBoardModalOpen, setIsAddBoardModalOpen] = useState(false);
+  const [newBoardName, setNewBoardName] = useState("");
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [deleteBoardId, setDeleteBoardId] = useState<string | null>(null);
   const { deleteDocument } = useDocumentStore();
   const queryClient = useQueryClient();
+
+  // Fetch Kanban boards for the current project
+  const { data: kanbanBoards = [] } = useQuery({
+    queryKey: ["kanbanBoards", currentProjectId],
+    queryFn: () => api.getKanbanBoards(currentProjectId || ""),
+    enabled: !!currentProjectId,
+  });
 
   // Sync activeSection with current route
   useEffect(() => {
@@ -81,6 +93,51 @@ const Sidebar = () => {
     setActiveSection(section);
     if (section === "kanban") {
       handleNavigate(`/projects/${project?.id}/kanban`);
+    }
+  };
+
+  const handleCreateBoard = async () => {
+    if (!newBoardName.trim() || !currentProjectId) return;
+    
+    try {
+      const newBoard = await api.createKanbanBoard({
+        name: newBoardName.trim(),
+        projectId: currentProjectId,
+      });
+      
+      await queryClient.invalidateQueries({ queryKey: ["kanbanBoards", currentProjectId] });
+      setNewBoardName("");
+      setIsAddBoardModalOpen(false);
+      
+      // Navigate to the new board
+      router.push(`/projects/${currentProjectId}/kanban/${newBoard.id}`);
+    } catch (error) {
+      console.error("Failed to create board:", error);
+    }
+  };
+
+  const handleDeleteBoard = async () => {
+    if (!deleteBoardId || !currentProjectId) return;
+    
+    // Check if we're currently on the board being deleted
+    const isCurrentBoard = router.asPath.includes(`/kanban/${deleteBoardId}`);
+    
+    try {
+      // Delete the board via API
+      await api.deleteKanbanBoard(deleteBoardId);
+      
+      // Invalidate queries to refetch updated data
+      await queryClient.invalidateQueries({ queryKey: ["kanbanBoards", currentProjectId] });
+      
+      // If we're on the deleted board, navigate to kanban index
+      if (isCurrentBoard) {
+        router.push(`/projects/${currentProjectId}/kanban`);
+      }
+      
+      setDeleteBoardId(null);
+    } catch (error) {
+      console.error("Failed to delete board:", error);
+      setDeleteBoardId(null);
     }
   };
 
@@ -234,8 +291,80 @@ const Sidebar = () => {
               </div>
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="space-y-1">
+            {/* Add New Board Button */}
+            <button
+              onClick={() => setIsAddBoardModalOpen(true)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
+                !isSidebarOpen && "justify-center"
+              )}
+              aria-label="Create new Kanban board"
+            >
+              <Plus size={16} className="text-primary" />
+              {isSidebarOpen && (
+                <span className="text-primary font-medium">New Board</span>
+              )}
+            </button>
+
+            {/* Kanban Boards List */}
+            {kanbanBoards?.map((board) => (
+              <div
+                key={board.id}
+                className={cn(
+                  "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors group",
+                  router.asPath.includes(`/kanban/${board.id}`)
+                    ? "bg-muted font-medium"
+                    : ""
+                )}
+              >
+                <button
+                  onClick={() =>
+                    handleNavigate(`/projects/${currentProjectId}/kanban/${board.id}`)
+                  }
+                  className="flex items-center gap-2 flex-1 text-left min-w-0"
+                  aria-label={`Open board ${board.name}`}
+                >
+                  <LayoutGrid size={16} className="text-muted-foreground flex-shrink-0" />
+                  {isSidebarOpen && <span className="truncate">{board.name}</span>}
+                </button>
+                {isSidebarOpen && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteBoardId(board.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0"
+                    aria-label={`Delete ${board.name}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </ScrollArea>
+
+      {/* Logout Button at Bottom */}
+      <div className="border-t p-2 mt-auto">
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20",
+            !isSidebarOpen && "justify-center px-2"
+          )}
+          onClick={() => {
+            localStorage.removeItem("user");
+            router.push("/login");
+          }}
+          aria-label="Logout"
+        >
+          <LogOut size={18} />
+          {isSidebarOpen && <span>Logout</span>}
+        </Button>
+      </div>
 
       {/* Add Doc Modal */}
       {currentProjectId && (
@@ -265,6 +394,81 @@ const Sidebar = () => {
             <Button
               variant="destructive"
               onClick={handleDeleteDocument}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Board Modal */}
+      <Dialog open={isAddBoardModalOpen} onOpenChange={setIsAddBoardModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Kanban Board</DialogTitle>
+            <DialogDescription>
+              Add a new board to organize your tasks.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Board Name *
+              </label>
+              <Input
+                value={newBoardName}
+                onChange={(e) => setNewBoardName(e.target.value)}
+                placeholder="Enter board name"
+                className="h-11"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleCreateBoard();
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddBoardModalOpen(false);
+                setNewBoardName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateBoard}
+              className="bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700"
+            >
+              Create Board
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Board Confirmation Dialog */}
+      <Dialog open={!!deleteBoardId} onOpenChange={(open) => !open && setDeleteBoardId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Kanban Board</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this board? All cards and data will be permanently removed. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteBoardId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteBoard}
             >
               Delete
             </Button>

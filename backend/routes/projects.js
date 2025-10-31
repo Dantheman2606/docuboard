@@ -58,12 +58,41 @@ router.get('/:id', async (req, res) => {
 // Create project
 router.post('/', async (req, res) => {
   try {
+    const projectId = `p${Date.now()}`;
     const project = new Project({
-      id: `p${Date.now()}`,
+      id: projectId,
       ...req.body,
       updatedAt: new Date()
     });
     await project.save();
+
+    // Create default Kanban board for the project
+    const KanbanBoard = require('../models/KanbanBoard');
+    const boardId = `board_${Date.now()}`;
+    const defaultBoard = new KanbanBoard({
+      id: boardId,
+      name: 'Main Board',
+      projectId: projectId,
+      columns: {
+        todo: { id: 'todo', title: 'To Do', cardIds: [] },
+        inprogress: { id: 'inprogress', title: 'In Progress', cardIds: [] },
+        done: { id: 'done', title: 'Done', cardIds: [] },
+      },
+      cards: {},
+      columnOrder: ['todo', 'inprogress', 'done'],
+    });
+    await defaultBoard.save();
+
+    // Create default document for the project
+    const docId = `doc_${Date.now()}`;
+    const defaultDoc = new Document({
+      id: docId,
+      title: 'Welcome Document',
+      content: '<h1>Welcome to your new project!</h1><p>Start writing here...</p>',
+      projectId: projectId
+    });
+    await defaultDoc.save();
+
     res.status(201).json(project);
   } catch (error) {
     res.status(500).json({ error: error.message });

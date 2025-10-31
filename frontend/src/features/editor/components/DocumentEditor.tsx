@@ -9,6 +9,9 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
+import { Color } from "@tiptap/extension-color";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { FontFamily } from "@tiptap/extension-font-family";
 import { EditorToolbar } from "./EditorToolbar";
 import { useDocumentStore } from "@/stores/documentStore";
 
@@ -21,6 +24,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   const { documents, updateDocumentContent, updateDocumentTitle } =
     useDocumentStore();
   const [title, setTitle] = useState("");
+  const [editorKey, setEditorKey] = useState(0);
   const document = documents[documentId];
 
   const editor = useEditor({
@@ -32,6 +36,11 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         },
       }),
       Underline,
+      TextStyle,
+      Color,
+      FontFamily.configure({
+        types: ["textStyle"],
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -45,7 +54,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         types: ["heading", "paragraph"],
       }),
       Highlight.configure({
-        multicolor: false,
+        multicolor: true,
       }),
     ],
     content: document?.content || "",
@@ -58,6 +67,10 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       updateDocumentContent(documentId, html);
+    },
+    onSelectionUpdate: () => {
+      // Force toolbar to re-render when selection changes
+      setEditorKey((prev) => prev + 1);
     },
   });
 
@@ -108,7 +121,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       </div>
 
       {/* Toolbar */}
-      <EditorToolbar editor={editor} />
+      <EditorToolbar key={editorKey} editor={editor} />
 
       {/* Editor Content */}
       <div className="flex-1 overflow-y-auto">

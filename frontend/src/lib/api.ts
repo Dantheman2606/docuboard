@@ -4,17 +4,18 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-interface Project {
+export interface Project {
   id: string;
   name: string;
   description: string;
+  color?: string;
   docs: {
     id: string;
     title: string;
   }[];
 }
 
-interface Document {
+export interface Document {
   id: string;
   title: string;
   content: string;
@@ -23,7 +24,9 @@ interface Document {
   updatedAt: string;
 }
 
-interface KanbanBoard {
+export interface KanbanBoard {
+  id: string;
+  name: string;
   projectId: string;
   columns: Record<string, {
     id: string;
@@ -39,6 +42,8 @@ interface KanbanBoard {
     dueDate?: string;
   }>;
   columnOrder: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const api = {
@@ -115,20 +120,83 @@ export const api = {
     if (!response.ok) throw new Error('Failed to delete document');
   },
 
-  // Kanban
-  getKanbanBoard: async (projectId: string): Promise<KanbanBoard> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/${projectId}`);
+  // Kanban Boards
+  getKanbanBoards: async (projectId: string): Promise<KanbanBoard[]> => {
+    const response = await fetch(`${API_BASE_URL}/kanban/project/${projectId}`);
+    if (!response.ok) throw new Error('Failed to fetch kanban boards');
+    return response.json();
+  },
+
+  getKanbanBoard: async (boardId: string): Promise<KanbanBoard> => {
+    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`);
     if (!response.ok) throw new Error('Failed to fetch kanban board');
     return response.json();
   },
 
-  updateKanbanBoard: async (projectId: string, data: KanbanBoard): Promise<KanbanBoard> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/${projectId}`, {
+  createKanbanBoard: async (data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
+    const response = await fetch(`${API_BASE_URL}/kanban`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to create kanban board');
+    }
+    return response.json();
+  },
+
+  updateKanbanBoard: async (boardId: string, data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
+    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!response.ok) throw new Error('Failed to update kanban board');
+    return response.json();
+  },
+
+  deleteKanbanBoard: async (boardId: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to delete kanban board');
+  },
+
+  // Authentication
+  login: async (username: string, password: string): Promise<{
+    id: string;
+    username: string;
+    name: string;
+    role: string;
+  }> => {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to login');
+    }
+    return response.json();
+  },
+
+  signup: async (username: string, password: string, name: string, role?: string): Promise<{
+    id: string;
+    username: string;
+    name: string;
+    role: string;
+  }> => {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name, role }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to signup');
+    }
     return response.json();
   },
 };

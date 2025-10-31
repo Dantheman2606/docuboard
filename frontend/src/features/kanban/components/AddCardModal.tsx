@@ -16,7 +16,7 @@ import type { Card } from "@/lib/mockData";
 interface AddCardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projectId: string;
+  boardId: string;
   columnId: string;
 }
 
@@ -42,7 +42,7 @@ const labelColors: Record<string, string> = {
   design: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
 };
 
-export function AddCardModal({ isOpen, onClose, projectId, columnId }: AddCardModalProps) {
+export function AddCardModal({ isOpen, onClose, boardId, columnId }: AddCardModalProps) {
   const { addCard } = useKanbanStore();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -64,7 +64,7 @@ export function AddCardModal({ isOpen, onClose, projectId, columnId }: AddCardMo
       labels: selectedLabels.length > 0 ? selectedLabels : undefined,
     };
 
-    addCard(projectId, columnId, newCard);
+    addCard(boardId, columnId, newCard);
     handleClose();
   };
 

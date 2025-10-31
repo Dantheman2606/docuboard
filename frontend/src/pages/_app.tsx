@@ -14,9 +14,12 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
+    const publicRoutes = ["/", "/login"];
+    const isPublicRoute = publicRoutes.includes(router.pathname);
+    
     if (storedUser) {
       setUser(JSON.parse(storedUser));
-    } else if (router.pathname !== "/login") {
+    } else if (!isPublicRoute) {
       router.replace("/login");
     }
     setIsLoading(false);
@@ -24,7 +27,11 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (isLoading) return null;
 
-  if (router.pathname === "/login") {
+  // Public routes don't need authentication
+  const publicRoutes = ["/", "/login"];
+  const isPublicRoute = publicRoutes.includes(router.pathname);
+  
+  if (isPublicRoute) {
     return (
       <Providers>
         <Component {...pageProps} />

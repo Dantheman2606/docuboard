@@ -6,7 +6,6 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
-  Highlighter,
 } from "lucide-react";
 import { ToolbarButton } from "./ToolbarButton";
 
@@ -46,12 +45,6 @@ export function TextFormatting({ editor }: TextFormattingProps) {
         isActive={editor.isActive("code")}
         icon={<Code size={16} />}
         label="Inline Code"
-      />
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleHighlight().run()}
-        isActive={editor.isActive("highlight")}
-        icon={<Highlighter size={16} />}
-        label="Highlight"
       />
     </div>
   );

@@ -80,12 +80,16 @@ export function KanbanCard({ card, index }: KanbanCardProps) {
                 : "hover:scale-[1.02] hover:shadow-lg hover:-translate-y-0.5"
             }`}
           >
-            {/* Drag handle - separate from editable content */}
+            {/* Drag handle - larger area for easier dragging */}
             <div 
               {...provided.dragHandleProps}
-              className="cursor-grab active:cursor-grabbing -mx-4 -mt-4 px-4 pt-2 pb-1 mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-t-lg transition-colors"
+              className="cursor-grab active:cursor-grabbing -mx-4 -mt-4 px-4 pt-3 pb-3 mb-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-t-lg transition-colors flex items-center justify-center"
             >
-              <div className="w-8 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto" />
+              <div className="flex gap-1.5 items-center">
+                <div className="w-6 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                <div className="w-6 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                <div className="w-6 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+              </div>
             </div>
 
             <div className="space-y-3">

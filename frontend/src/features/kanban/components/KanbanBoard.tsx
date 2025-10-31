@@ -7,21 +7,22 @@ import { useKanbanStore } from "@/stores/kanbanStore";
 
 interface KanbanBoardProps {
   projectId: string;
+  boardId: string;
 }
 
-export function KanbanBoard({ projectId }: KanbanBoardProps) {
-  const { data: fetchedBoard, isLoading } = useKanban(projectId);
+export function KanbanBoard({ projectId, boardId }: KanbanBoardProps) {
+  const { data: fetchedBoard, isLoading } = useKanban(boardId);
   const { boards, setBoard, moveCard } = useKanbanStore();
 
   // Initialize board from backend only if not already in store
   useEffect(() => {
-    if (fetchedBoard && !boards[projectId]) {
-      setBoard(projectId, fetchedBoard);
+    if (fetchedBoard && !boards[boardId]) {
+      setBoard(boardId, fetchedBoard);
     }
-  }, [fetchedBoard, projectId, boards, setBoard]);
+  }, [fetchedBoard, boardId, boards, setBoard]);
 
   // Always use the Zustand store as source of truth (it syncs with backend)
-  const board = boards[projectId] || fetchedBoard;
+  const board = boards[boardId] || fetchedBoard;
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -39,7 +40,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
 
     // Move the card
     moveCard(
-      projectId,
+      boardId,
       draggableId,
       source.droppableId,
       destination.droppableId,
@@ -58,7 +59,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
   if (!board) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-gray-500">No board found for this project.</p>
+        <p className="text-gray-500">No board found.</p>
       </div>
     );
   }
@@ -78,7 +79,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProps) {
                 key={column.id} 
                 column={column} 
                 cards={cards}
-                projectId={projectId}
+                boardId={boardId}
               />
             );
           })}

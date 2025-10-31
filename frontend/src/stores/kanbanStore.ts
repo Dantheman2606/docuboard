@@ -6,18 +6,18 @@ import { api } from "@/lib/api";
 
 interface KanbanState {
   boards: Record<string, KanbanBoard>;
-  setBoard: (projectId: string, board: KanbanBoard) => void;
+  setBoard: (boardId: string, board: KanbanBoard) => void;
   moveCard: (
-    projectId: string,
+    boardId: string,
     cardId: string,
     sourceColumnId: string,
     destinationColumnId: string,
     destinationIndex: number
   ) => void;
-  updateCard: (projectId: string, cardId: string, updates: Partial<Card>) => void;
-  addCard: (projectId: string, columnId: string, card: Card) => void;
-  deleteCard: (projectId: string, cardId: string) => void;
-  syncBoardToBackend: (projectId: string) => Promise<void>;
+  updateCard: (boardId: string, cardId: string, updates: Partial<Card>) => void;
+  addCard: (boardId: string, columnId: string, card: Card) => void;
+  deleteCard: (boardId: string, cardId: string) => void;
+  syncBoardToBackend: (boardId: string) => Promise<void>;
 }
 
 export const useKanbanStore = create<KanbanState>()(
@@ -25,19 +25,19 @@ export const useKanbanStore = create<KanbanState>()(
     (set, get) => ({
       boards: {},
 
-      setBoard: (projectId, board) => {
+      setBoard: (boardId, board) => {
         // Always prefer backend data
         set((state) => ({
           boards: {
             ...state.boards,
-            [projectId]: board,
+            [boardId]: board,
           },
         }));
       },
 
-      moveCard: (projectId, cardId, sourceColumnId, destinationColumnId, destinationIndex) => {
+      moveCard: (boardId, cardId, sourceColumnId, destinationColumnId, destinationIndex) => {
         set((state) => {
-          const board = state.boards[projectId];
+          const board = state.boards[boardId];
           if (!board) return state;
 
           const sourceColumn = board.columns[sourceColumnId];
@@ -70,7 +70,7 @@ export const useKanbanStore = create<KanbanState>()(
           return {
             boards: {
               ...state.boards,
-              [projectId]: {
+              [boardId]: {
                 ...board,
                 columns: {
                   ...board.columns,
@@ -92,22 +92,16 @@ export const useKanbanStore = create<KanbanState>()(
         
         // Sync to backend after state update
         setTimeout(() => {
-          const board = useKanbanStore.getState().boards[projectId];
+          const board = useKanbanStore.getState().boards[boardId];
           if (board) {
-            const boardData = {
-              projectId,
-              columns: board.columns,
-              cards: board.cards,
-              columnOrder: board.columnOrder,
-            };
-            api.updateKanbanBoard(projectId, boardData as any).catch(console.error);
+            api.updateKanbanBoard(boardId, board as any).catch(console.error);
           }
         }, 0);
       },
 
-      updateCard: (projectId, cardId, updates) => {
+      updateCard: (boardId, cardId, updates) => {
         set((state) => {
-          const board = state.boards[projectId];
+          const board = state.boards[boardId];
           if (!board) return state;
 
           const card = board.cards[cardId];
@@ -116,7 +110,7 @@ export const useKanbanStore = create<KanbanState>()(
           return {
             boards: {
               ...state.boards,
-              [projectId]: {
+              [boardId]: {
                 ...board,
                 cards: {
                   ...board.cards,
@@ -132,22 +126,16 @@ export const useKanbanStore = create<KanbanState>()(
         
         // Sync to backend after state update
         setTimeout(() => {
-          const board = useKanbanStore.getState().boards[projectId];
+          const board = useKanbanStore.getState().boards[boardId];
           if (board) {
-            const boardData = {
-              projectId,
-              columns: board.columns,
-              cards: board.cards,
-              columnOrder: board.columnOrder,
-            };
-            api.updateKanbanBoard(projectId, boardData as any).catch(console.error);
+            api.updateKanbanBoard(boardId, board as any).catch(console.error);
           }
         }, 0);
       },
 
-      addCard: (projectId, columnId, card) => {
+      addCard: (boardId, columnId, card) => {
         set((state) => {
-          const board = state.boards[projectId];
+          const board = state.boards[boardId];
           if (!board) return state;
 
           const column = board.columns[columnId];
@@ -156,7 +144,7 @@ export const useKanbanStore = create<KanbanState>()(
           return {
             boards: {
               ...state.boards,
-              [projectId]: {
+              [boardId]: {
                 ...board,
                 cards: {
                   ...board.cards,
@@ -176,22 +164,16 @@ export const useKanbanStore = create<KanbanState>()(
         
         // Sync to backend after state update
         setTimeout(() => {
-          const board = useKanbanStore.getState().boards[projectId];
+          const board = useKanbanStore.getState().boards[boardId];
           if (board) {
-            const boardData = {
-              projectId,
-              columns: board.columns,
-              cards: board.cards,
-              columnOrder: board.columnOrder,
-            };
-            api.updateKanbanBoard(projectId, boardData as any).catch(console.error);
+            api.updateKanbanBoard(boardId, board as any).catch(console.error);
           }
         }, 0);
       },
 
-      deleteCard: (projectId, cardId) => {
+      deleteCard: (boardId, cardId) => {
         set((state) => {
-          const board = state.boards[projectId];
+          const board = state.boards[boardId];
           if (!board) return state;
 
           // Find which column contains the card
@@ -215,7 +197,7 @@ export const useKanbanStore = create<KanbanState>()(
           return {
             boards: {
               ...state.boards,
-              [projectId]: {
+              [boardId]: {
                 ...board,
                 cards: remainingCards,
                 columns: {
@@ -232,30 +214,18 @@ export const useKanbanStore = create<KanbanState>()(
 
         // Sync to backend after state update
         setTimeout(() => {
-          const board = useKanbanStore.getState().boards[projectId];
+          const board = useKanbanStore.getState().boards[boardId];
           if (board) {
-            const boardData = {
-              projectId,
-              columns: board.columns,
-              cards: board.cards,
-              columnOrder: board.columnOrder,
-            };
-            api.updateKanbanBoard(projectId, boardData as any).catch(console.error);
+            api.updateKanbanBoard(boardId, board as any).catch(console.error);
           }
         }, 0);
       },
 
-      syncBoardToBackend: async (projectId: string) => {
-        const board = useKanbanStore.getState().boards[projectId];
+      syncBoardToBackend: async (boardId: string) => {
+        const board = useKanbanStore.getState().boards[boardId];
         if (board) {
           try {
-            const boardData = {
-              projectId,
-              columns: board.columns,
-              cards: board.cards,
-              columnOrder: board.columnOrder,
-            };
-            await api.updateKanbanBoard(projectId, boardData as any);
+            await api.updateKanbanBoard(boardId, board as any);
           } catch (error) {
             console.error('Failed to sync kanban board to backend:', error);
           }

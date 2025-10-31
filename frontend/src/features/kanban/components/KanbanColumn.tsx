@@ -10,7 +10,7 @@ import { Plus } from "lucide-react";
 interface KanbanColumnProps {
   column: Column;
   cards: CardType[];
-  projectId: string;
+  boardId: string;
 }
 
 const columnColors: Record<string, { bg: string; header: string; badge: string }> = {
@@ -31,7 +31,7 @@ const columnColors: Record<string, { bg: string; header: string; badge: string }
   },
 };
 
-export function KanbanColumn({ column, cards, projectId }: KanbanColumnProps) {
+export function KanbanColumn({ column, cards, boardId }: KanbanColumnProps) {
   const colorScheme = columnColors[column.id] || columnColors.todo;
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
 
@@ -98,7 +98,7 @@ export function KanbanColumn({ column, cards, projectId }: KanbanColumnProps) {
         isOpen={isAddCardOpen}
         onClose={() => setIsAddCardOpen(false)}
         columnId={column.id}
-        projectId={projectId}
+        boardId={boardId}
       />
     </div>
   );

@@ -3,12 +3,13 @@
 
 import { Editor } from "@tiptap/react";
 import {
-  ToolbarDivider,
   TextFormatting,
   Headings,
   Lists,
   TextAlignment,
   LinkManagement,
+  ColorPicker,
+  FontOptions,
 } from "./toolbarComponents";
 
 interface EditorToolbarProps {
@@ -27,22 +28,32 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         {/* Text Formatting */}
         <TextFormatting editor={editor} />
         
-        <ToolbarDivider />
+        <div className="w-px h-6 bg-border mx-1" />
         
         {/* Headings */}
         <Headings editor={editor} />
         
-        <ToolbarDivider />
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        {/* Font Options */}
+        <FontOptions editor={editor} />
+        
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        {/* Color Picker */}
+        <ColorPicker editor={editor} />
+        
+        <div className="w-px h-6 bg-border mx-1" />
         
         {/* Lists and Quotes */}
         <Lists editor={editor} />
         
-        <ToolbarDivider />
+        <div className="w-px h-6 bg-border mx-1" />
         
         {/* Text Alignment */}
         <TextAlignment editor={editor} />
         
-        <ToolbarDivider />
+        <div className="w-px h-6 bg-border mx-1" />
         
         {/* Link Management */}
         <LinkManagement editor={editor} />

@@ -6,14 +6,14 @@ import type { KanbanBoard, Card } from "@/lib/mockData";
 import { api } from "@/lib/api";
 
 /**
- * Custom hook for fetching Kanban board data from backend
+ * Custom hook for fetching Kanban board data from backend by boardId
  */
-export const useKanban = (projectId: string) => {
+export const useKanban = (boardId: string) => {
   return useQuery({
-    queryKey: ["kanban", projectId],
+    queryKey: ["kanban", boardId],
     queryFn: async (): Promise<KanbanBoard | null> => {
       try {
-        const board = await api.getKanbanBoard(projectId);
+        const board = await api.getKanbanBoard(boardId);
         return board as any; // Type conversion between API and mock data types
       } catch (error) {
         console.error('Failed to fetch kanban board:', error);
@@ -21,7 +21,7 @@ export const useKanban = (projectId: string) => {
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    enabled: !!projectId,
+    enabled: !!boardId,
   });
 };
 

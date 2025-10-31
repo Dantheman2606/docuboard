@@ -2,7 +2,9 @@
 const mongoose = require('mongoose');
 
 const kanbanBoardSchema = new mongoose.Schema({
-  projectId: { type: String, required: true, unique: true, ref: 'Project' },
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  projectId: { type: String, required: true, ref: 'Project' },
   columns: {
     type: Map,
     of: {
@@ -23,7 +25,11 @@ const kanbanBoardSchema = new mongoose.Schema({
     }
   },
   columnOrder: [String],
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Create compound index for projectId (not unique anymore)
+kanbanBoardSchema.index({ projectId: 1 });
 
 module.exports = mongoose.model('KanbanBoard', kanbanBoardSchema);

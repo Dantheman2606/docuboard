@@ -12,11 +12,13 @@ interface LinkManagementProps {
 export function LinkManagement({ editor }: LinkManagementProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
+  const [, forceUpdate] = useState({});
 
   const setLink = () => {
     if (linkUrl === "") {
       editor.chain().focus().unsetLink().run();
       setShowLinkInput(false);
+      forceUpdate({});
       return;
     }
 
@@ -25,10 +27,12 @@ export function LinkManagement({ editor }: LinkManagementProps) {
     editor.chain().focus().setLink({ href: url }).run();
     setShowLinkInput(false);
     setLinkUrl("");
+    forceUpdate({});
   };
 
   const removeLink = () => {
     editor.chain().focus().unsetLink().run();
+    forceUpdate({});
   };
 
   if (showLinkInput) {
