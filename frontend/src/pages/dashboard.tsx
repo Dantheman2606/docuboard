@@ -32,7 +32,7 @@ const projectColors = [
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], isLoading: projectsLoading, isError: projectsError } = useProjects();
   const queryClient = useQueryClient();
   const {currentProjectId, setCurrentProject} = useUIStore();
   
@@ -160,6 +160,12 @@ export default function DashboardPage() {
             <p className="text-slate-600 mt-2 text-lg">
               Select a project to open its workspace
             </p>
+            {projectsError && projects.length > 0 && (
+              <div className="mt-2 flex items-center gap-2 text-amber-600 text-sm bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
+                <span className="font-medium">📴 Offline</span>
+                <span>Showing cached projects</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

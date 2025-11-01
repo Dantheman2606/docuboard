@@ -15,7 +15,7 @@ export default function DocPage() {
   const docId = typeof pageId === "string" ? pageId : "";
   
   const { setCurrentProject, currentProjectId } = useUIStore();
-  const { data: project, isLoading: projectLoading } = useProject(projectId);
+  const { data: project, isLoading: projectLoading, isError: projectError } = useProject(projectId);
   const { documents, setDocument, isOnline, setIsOnline } = useDocumentStore();
   const [isLoadingDoc, setIsLoadingDoc] = useState(true);
   const lastFetchedDocIdRef = useRef<string>("");
@@ -67,50 +67,61 @@ export default function DocPage() {
       setIsLoadingDoc(true);
       
       try {
-        if (isOnline) {
-          // When online, fetch fresh data from backend
-          console.log('📡 Online: Fetching document from backend');
+        // First, check actual connection by testing if we can reach the backend
+        const connectionAvailable = navigator.onLine;
+        
+        if (connectionAvailable) {
+          // Test actual connectivity with a quick backend check
+          console.log('� Checking backend connectivity...');
           try {
             const doc = await api.getDocument(docId);
             console.log('✅ Document fetched from backend:', doc.title);
             setDocument(doc);
-          } catch (error) {
-            console.log('⚠️ Document not found in backend');
             
-            // If exists in localStorage, use it
-            if (existingDoc) {
-              console.log('📦 Using cached document from localStorage:', existingDoc.title);
-              setIsLoadingDoc(false);
-              return;
+            // Ensure online state is set to true
+            if (!isOnline) {
+              console.log('🌐 Connection confirmed - setting online');
+              setIsOnline(true);
+            }
+          } catch (error) {
+            console.log('⚠️ Backend not reachable, using localStorage');
+            
+            // Connection failed, set offline state
+            if (isOnline) {
+              console.log('📴 No backend connection - setting offline');
+              setIsOnline(false);
             }
             
-            // Otherwise, try to create from project data
-            if (project) {
-              const projectDoc = project.docs.find((d) => d.id === docId);
-              if (projectDoc) {
-                console.log('🆕 Creating new document from project data');
-                const newDoc = {
-                  id: projectDoc.id,
-                  title: projectDoc.title,
-                  content: "",
-                  projectId: projectId,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                };
-                setDocument(newDoc);
-                // Try to create in backend
-                api.createDocument(newDoc).catch(console.error);
+            // Use localStorage if available
+            if (existingDoc) {
+              console.log('📦 Using cached document from localStorage:', existingDoc.title);
+            } else {
+              // Create placeholder from project data
+              console.log('⚠️ Document not in localStorage, creating placeholder');
+              if (project) {
+                const projectDoc = project.docs.find((d) => d.id === docId);
+                if (projectDoc) {
+                  const newDoc = {
+                    id: projectDoc.id,
+                    title: projectDoc.title,
+                    content: "",
+                    projectId: projectId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+                  setDocument(newDoc);
+                }
               }
             }
           }
         } else {
-          // When offline, use localStorage data
-          console.log('📴 Offline: Using localStorage');
+          // Browser reports offline, use localStorage immediately
+          console.log('📴 Browser offline: Using localStorage');
+          setIsOnline(false);
           
           if (existingDoc) {
             // Document exists in localStorage
             console.log('📦 Document loaded from localStorage:', existingDoc.title);
-            setIsLoadingDoc(false);
           } else {
             // Document doesn't exist in localStorage yet
             console.log('⚠️ Document not in localStorage, creating placeholder');
@@ -149,7 +160,7 @@ export default function DocPage() {
     );
   }
 
-  if (!project) {
+  if (!project && !projectError) {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center h-screen">
@@ -163,9 +174,14 @@ export default function DocPage() {
       </Layout>
     );
   }
+  
+  // If project failed to load but we have documents in localStorage, continue anyway
+  if (!project && projectError && documents[docId]) {
+    console.log('📦 Project failed to load but document exists in localStorage, continuing...');
+  }
 
   // Check if document exists in project or in document store
-  const doc = project.docs.find((d) => d.id === docId);
+  const doc = project?.docs.find((d) => d.id === docId);
   const docInStore = documents[docId];
 
   if (!doc && !docInStore) {
@@ -189,11 +205,12 @@ export default function DocPage() {
   }
 
   const documentTitle = doc?.title || docInStore?.title || 'Document';
+  const projectName = project?.name || 'Project';
 
   return (
     <>
       <Head>
-        <title>{documentTitle} - {project.name} - Docuboard</title>
+        <title>{documentTitle} - {projectName} - Docuboard</title>
       </Head>
       <Layout>
         <div className="h-full flex flex-col overflow-hidden">

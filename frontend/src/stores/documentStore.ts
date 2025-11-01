@@ -40,7 +40,14 @@ export const useDocumentStore = create<DocumentState>()(
         // Log status change
         if (online && !wasOnline) {
           console.log('🌐 Connection restored - syncing pending documents');
-          get().syncPendingDocuments();
+          // Use setTimeout to ensure sync happens after store is fully initialized
+          setTimeout(() => {
+            try {
+              get().syncPendingDocuments();
+            } catch (error) {
+              console.error('Failed to sync pending documents:', error);
+            }
+          }, 100);
         } else if (!online && wasOnline) {
           console.log('📴 Connection lost - switching to offline mode');
         }
@@ -229,46 +236,57 @@ export const useDocumentStore = create<DocumentState>()(
       },
 
       syncPendingDocuments: async () => {
-        const { documents } = get();
-        const pendingDocs = Object.values(documents).filter(doc => doc.pendingSync);
-        
-        if (pendingDocs.length === 0) {
-          console.log('✅ No pending documents to sync');
-          return;
-        }
-        
-        console.log(`🔄 Syncing ${pendingDocs.length} pending document(s)...`);
-        
-        for (const doc of pendingDocs) {
-          try {
-            console.log(`📤 Syncing document: ${doc.title}`);
-            // Try to update first, if fails, try to create (in case it's a new doc)
-            try {
-              await api.updateDocument(doc.id, { 
-                title: doc.title, 
-                content: doc.content 
-              });
-              console.log(`✅ Successfully updated: ${doc.title}`);
-            } catch (updateError) {
-              // If update fails (404), try to create the document
-              console.log(`📝 Creating new document: ${doc.title}`);
-              await api.createDocument(doc);
-              console.log(`✅ Successfully created: ${doc.title}`);
-            }
-            
-            // Remove pendingSync flag after successful sync
-            set((state) => ({
-              documents: {
-                ...state.documents,
-                [doc.id]: { ...state.documents[doc.id], pendingSync: false },
-              },
-            }));
-          } catch (error) {
-            console.error(`❌ Failed to sync document ${doc.title}:`, error);
+        try {
+          const { documents, isOnline } = get();
+          
+          // Don't try to sync if offline
+          if (!isOnline) {
+            console.log('📴 Skipping sync - offline');
+            return;
           }
+          
+          const pendingDocs = Object.values(documents).filter(doc => doc.pendingSync);
+          
+          if (pendingDocs.length === 0) {
+            console.log('✅ No pending documents to sync');
+            return;
+          }
+          
+          console.log(`🔄 Syncing ${pendingDocs.length} pending document(s)...`);
+          
+          for (const doc of pendingDocs) {
+            try {
+              console.log(`📤 Syncing document: ${doc.title}`);
+              // Try to update first, if fails, try to create (in case it's a new doc)
+              try {
+                await api.updateDocument(doc.id, { 
+                  title: doc.title, 
+                  content: doc.content 
+                });
+                console.log(`✅ Successfully updated: ${doc.title}`);
+              } catch (updateError) {
+                // If update fails (404), try to create the document
+                console.log(`📝 Creating new document: ${doc.title}`);
+                await api.createDocument(doc);
+                console.log(`✅ Successfully created: ${doc.title}`);
+              }
+              
+              // Remove pendingSync flag after successful sync
+              set((state) => ({
+                documents: {
+                  ...state.documents,
+                  [doc.id]: { ...state.documents[doc.id], pendingSync: false },
+                },
+              }));
+            } catch (error: any) {
+              console.error(`❌ Failed to sync document ${doc.title}:`, error?.message || error);
+            }
+          }
+          
+          console.log('✅ Sync completed');
+        } catch (error: any) {
+          console.error('❌ Error during syncPendingDocuments:', error?.message || error);
         }
-        
-        console.log('✅ Sync completed');
       },
     }),
     {

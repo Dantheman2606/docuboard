@@ -23,10 +23,15 @@ const fetchWithOfflineDetection = async (url: string, options?: RequestInit): Pr
     const response = await fetch(url, options);
     
     // If fetch succeeds, we're definitely online
-    const store = useDocumentStore.getState();
-    if (!store.isOnline) {
-      console.log('🌐 Connection detected - setting online');
-      store.setIsOnline(true);
+    // Use try-catch to avoid errors during store initialization
+    try {
+      const store = useDocumentStore.getState();
+      if (store && !store.isOnline) {
+        console.log('🌐 Connection detected - setting online');
+        store.setIsOnline(true);
+      }
+    } catch (storeError) {
+      // Store not ready yet, ignore
     }
     
     return response;
@@ -34,8 +39,15 @@ const fetchWithOfflineDetection = async (url: string, options?: RequestInit): Pr
     // Check if this is a connection error
     if (isConnectionError(error)) {
       console.log('📴 Connection error detected - setting offline');
-      const store = useDocumentStore.getState();
-      store.setIsOnline(false);
+      // Use try-catch to avoid errors during store initialization
+      try {
+        const store = useDocumentStore.getState();
+        if (store) {
+          store.setIsOnline(false);
+        }
+      } catch (storeError) {
+        // Store not ready yet, ignore
+      }
     }
     throw error;
   }
