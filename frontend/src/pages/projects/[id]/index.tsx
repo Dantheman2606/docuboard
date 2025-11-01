@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import Head from "next/head";
 import Layout from "@/components/Layout";
 import { useUIStore } from "@/stores/uiStore";
 import { useProject } from "@/hooks/useProject";
@@ -31,19 +32,29 @@ export default function ProjectPage() {
 
   if (isLoading) {
     return (
+      <>
+        <Head>
+          <title>Loading Project - Docuboard</title>
+        </Head>
+        <Layout>
+          <div className="flex items-center justify-center h-screen">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </Layout>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Head>
+        <title>{project?.name || 'Project'} - Docuboard</title>
+      </Head>
       <Layout>
         <div className="flex items-center justify-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       </Layout>
-    );
-  }
-
-  return (
-    <Layout>
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    </Layout>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,10 +82,15 @@ export default function LoginPage() {
 
   if (showSignup) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
-        <div className="w-full max-w-md px-4">
-          {/* Back to Landing Link */}
-          <div className="text-center mb-4">
+      <>
+        <Head>
+          <title>Sign Up - Docuboard</title>
+          <meta name="description" content="Create your Docuboard account" />
+        </Head>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
+          <div className="w-full max-w-md px-4">
+            {/* Back to Landing Link */}
+            <div className="text-center mb-4">
             <button
               onClick={() => router.push("/")}
               className="text-sm text-slate-600 hover:text-sky-600 transition-colors"
@@ -166,12 +172,18 @@ export default function LoginPage() {
           </Card>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
-      <div className="w-full max-w-md px-4">
+    <>
+      <Head>
+        <title>Login - Docuboard</title>
+        <meta name="description" content="Sign in to your Docuboard account" />
+      </Head>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
+        <div className="w-full max-w-md px-4">
         {/* Back to Landing Link */}
         <div className="text-center mb-4">
           <button
@@ -276,5 +288,6 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+    </>
   );
 }

@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Head from "next/head";
 import Layout from "@/components/Layout";
 import { useUIStore } from "@/stores/uiStore";
 import { useProject } from "@/hooks/useProject";
@@ -93,25 +94,37 @@ export default function DocPage() {
 
   if (!doc && !docInStore) {
     return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center h-screen">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Document Not Found
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            The document you're looking for doesn't exist.
-          </p>
-        </div>
-      </Layout>
+      <>
+        <Head>
+          <title>Document Not Found - Docuboard</title>
+        </Head>
+        <Layout>
+          <div className="flex flex-col items-center justify-center h-screen">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              Document Not Found
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              The document you're looking for doesn't exist.
+            </p>
+          </div>
+        </Layout>
+      </>
     );
   }
 
+  const documentTitle = doc?.title || docInStore?.title || 'Document';
+
   return (
-    <Layout>
-      <div className="h-full flex flex-col overflow-hidden">
-        {/* Document Editor */}
-        <DocumentEditor documentId={docId} projectId={projectId} />
-      </div>
-    </Layout>
+    <>
+      <Head>
+        <title>{documentTitle} - {project.name} - Docuboard</title>
+      </Head>
+      <Layout>
+        <div className="h-full flex flex-col overflow-hidden">
+          {/* Document Editor */}
+          <DocumentEditor documentId={docId} projectId={projectId} />
+        </div>
+      </Layout>
+    </>
   );
 }

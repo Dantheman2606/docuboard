@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,9 +145,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-12">
+    <>
+      <Head>
+        <title>Dashboard - Docuboard</title>
+        <meta name="description" content="Manage your projects and collaborate with your team" />
+      </Head>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-12">
           <div>
             <h1 className="text-4xl font-bold bg-gradient-to-r pb-3 from-slate-800 to-sky-700 bg-clip-text text-transparent">
               Your Projects
@@ -408,5 +414,6 @@ export default function DashboardPage() {
         </Dialog>
       </div>
     </div>
+    </>
   );
 }

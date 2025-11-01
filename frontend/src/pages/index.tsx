@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Head from "next/head";
 import { Button } from "@/components/ui/button";
 import { 
   FileText, 
@@ -53,9 +54,14 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50/30 via-white to-purple-50/30">
-      {/* Navbar */}
-      <nav className="fixed top-0 w-full bg-white/70 backdrop-blur-lg border-b border-indigo-100/50 z-50">
+    <>
+      <Head>
+        <title>Docuboard - Collaborative Document & Project Management</title>
+        <meta name="description" content="Powerful document editing with real-time collaboration, Kanban boards, and team management in one place." />
+      </Head>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50/30 via-white to-purple-50/30">
+        {/* Navbar */}
+        <nav className="fixed top-0 w-full bg-white/70 backdrop-blur-lg border-b border-indigo-100/50 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -349,5 +355,6 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
