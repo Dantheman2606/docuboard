@@ -14,6 +14,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { FontFamily } from "@tiptap/extension-font-family";
 import { EditorToolbar } from "./EditorToolbar";
 import { useDocumentStore } from "@/stores/documentStore";
+import { WifiOff, Wifi } from "lucide-react";
 
 interface DocumentEditorProps {
   documentId: string;
@@ -21,7 +22,7 @@ interface DocumentEditorProps {
 }
 
 export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
-  const { documents, updateDocumentContent, updateDocumentTitle } =
+  const { documents, updateDocumentContent, updateDocumentTitle, isOnline } =
     useDocumentStore();
   const [title, setTitle] = useState("");
   const [editorKey, setEditorKey] = useState(0);
@@ -108,6 +109,22 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="bg-amber-500 text-white px-4 py-2 text-sm flex items-center gap-2 justify-center">
+          <WifiOff size={16} />
+          <span>You're offline. Changes will be saved locally and synced when you're back online.</span>
+        </div>
+      )}
+      
+      {/* Online indicator for pending sync */}
+      {isOnline && document?.pendingSync && (
+        <div className="bg-blue-500 text-white px-4 py-2 text-sm flex items-center gap-2 justify-center">
+          <Wifi size={16} />
+          <span>Syncing changes to server...</span>
+        </div>
+      )}
+
       {/* Title Input */}
       <div className="px-8 pt-8 pb-4">
         <input

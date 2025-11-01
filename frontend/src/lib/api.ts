@@ -1,8 +1,45 @@
 // /lib/api.ts
 // Commented out mock data - now using backend API
 // import { projects } from "./mockData";
+import { useDocumentStore } from "@/stores/documentStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// Helper to detect if error is a connection failure
+const isConnectionError = (error: any): boolean => {
+  // Check for common connection error patterns
+  return (
+    error?.message?.includes('Failed to fetch') ||
+    error?.message?.includes('NetworkError') ||
+    error?.message?.includes('Network request failed') ||
+    error?.code === 'ECONNREFUSED' ||
+    error?.name === 'TypeError' && error?.message?.includes('fetch')
+  );
+};
+
+// Wrapper for fetch that detects offline status
+const fetchWithOfflineDetection = async (url: string, options?: RequestInit): Promise<Response> => {
+  try {
+    const response = await fetch(url, options);
+    
+    // If fetch succeeds, we're definitely online
+    const store = useDocumentStore.getState();
+    if (!store.isOnline) {
+      console.log('🌐 Connection detected - setting online');
+      store.setIsOnline(true);
+    }
+    
+    return response;
+  } catch (error: any) {
+    // Check if this is a connection error
+    if (isConnectionError(error)) {
+      console.log('📴 Connection error detected - setting offline');
+      const store = useDocumentStore.getState();
+      store.setIsOnline(false);
+    }
+    throw error;
+  }
+};
 
 export interface Project {
   id: string;
@@ -49,19 +86,19 @@ export interface KanbanBoard {
 export const api = {
   // Projects
   getProjects: async (): Promise<Project[]> => {
-    const response = await fetch(`${API_BASE_URL}/projects`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects`);
     if (!response.ok) throw new Error('Failed to fetch projects');
     return response.json();
   },
 
   getProject: async (id: string): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${id}`);
     if (!response.ok) throw new Error('Project not found');
     return response.json();
   },
 
   createProject: async (data: Partial<Project>): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -71,7 +108,7 @@ export const api = {
   },
 
   updateProject: async (id: string, data: Partial<Project>): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -82,19 +119,19 @@ export const api = {
 
   // Documents
   getDocuments: async (projectId: string): Promise<Document[]> => {
-    const response = await fetch(`${API_BASE_URL}/documents/project/${projectId}`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/project/${projectId}`);
     if (!response.ok) throw new Error('Failed to fetch documents');
     return response.json();
   },
 
   getDocument: async (id: string): Promise<Document> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${id}`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`);
     if (!response.ok) throw new Error('Document not found');
     return response.json();
   },
 
   createDocument: async (data: Partial<Document>): Promise<Document> => {
-    const response = await fetch(`${API_BASE_URL}/documents`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -104,7 +141,7 @@ export const api = {
   },
 
   updateDocument: async (id: string, data: Partial<Document>): Promise<Document> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${id}`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -114,7 +151,7 @@ export const api = {
   },
 
   deleteDocument: async (id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${id}`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete document');
@@ -122,19 +159,19 @@ export const api = {
 
   // Kanban Boards
   getKanbanBoards: async (projectId: string): Promise<KanbanBoard[]> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/project/${projectId}`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/project/${projectId}`);
     if (!response.ok) throw new Error('Failed to fetch kanban boards');
     return response.json();
   },
 
   getKanbanBoard: async (boardId: string): Promise<KanbanBoard> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`);
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`);
     if (!response.ok) throw new Error('Failed to fetch kanban board');
     return response.json();
   },
 
   createKanbanBoard: async (data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
-    const response = await fetch(`${API_BASE_URL}/kanban`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -147,7 +184,7 @@ export const api = {
   },
 
   updateKanbanBoard: async (boardId: string, data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -157,7 +194,7 @@ export const api = {
   },
 
   deleteKanbanBoard: async (boardId: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/kanban/${boardId}`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete kanban board');
@@ -170,7 +207,7 @@ export const api = {
     name: string;
     role: string;
   }> => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -188,7 +225,7 @@ export const api = {
     name: string;
     role: string;
   }> => {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, name, role }),

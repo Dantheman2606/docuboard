@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
 import Layout from "@/components/Layout";
 import { useUIStore } from "@/stores/uiStore";
@@ -14,45 +14,120 @@ export default function DocPage() {
   const projectId = typeof id === "string" ? id : "";
   const docId = typeof pageId === "string" ? pageId : "";
   
-  const { setCurrentProject } = useUIStore();
+  const { setCurrentProject, currentProjectId } = useUIStore();
   const { data: project, isLoading: projectLoading } = useProject(projectId);
-  const { documents, setDocument } = useDocumentStore();
+  const { documents, setDocument, isOnline, setIsOnline } = useDocumentStore();
   const [isLoadingDoc, setIsLoadingDoc] = useState(true);
+  const lastFetchedDocIdRef = useRef<string>("");
+  const lastOnlineStatusRef = useRef<boolean>(true);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [setIsOnline]);
 
   useEffect(() => {
-    if (projectId) {
+    if (projectId && projectId !== currentProjectId) {
       setCurrentProject(projectId);
     }
-  }, [projectId, setCurrentProject]);
+  }, [projectId, currentProjectId, setCurrentProject]);
 
-  // Fetch document from backend
+  // Fetch document from backend if online, otherwise use localStorage
   useEffect(() => {
     const fetchDocument = async () => {
-      if (!docId) return;
+      if (!docId || !projectId) return;
+      
+      // Check if we need to fetch
+      const docIdChanged = lastFetchedDocIdRef.current !== docId;
+      const onlineStatusChanged = lastOnlineStatusRef.current !== isOnline;
+      
+      // Skip if same document and connection status hasn't changed
+      if (!docIdChanged && !onlineStatusChanged && documents[docId]) {
+        setIsLoadingDoc(false);
+        return;
+      }
+      
+      // Update refs
+      lastFetchedDocIdRef.current = docId;
+      lastOnlineStatusRef.current = isOnline;
+      
+      // Check if document exists in localStorage
+      const existingDoc = documents[docId];
       
       setIsLoadingDoc(true);
+      
       try {
-        // Try to fetch from backend first
-        const doc = await api.getDocument(docId);
-        setDocument(doc);
-      } catch (error) {
-        console.log('Document not found in backend, checking project docs');
-        // If not in backend, check if it's in project's docs list
-        if (project) {
-          const projectDoc = project.docs.find((d) => d.id === docId);
-          if (projectDoc) {
-            // Create document in backend and local store
-            const newDoc = {
-              id: projectDoc.id,
-              title: projectDoc.title,
-              content: "",
-              projectId: projectId,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            setDocument(newDoc);
-            // Sync to backend
-            api.createDocument(newDoc).catch(console.error);
+        if (isOnline) {
+          // When online, fetch fresh data from backend
+          console.log('📡 Online: Fetching document from backend');
+          try {
+            const doc = await api.getDocument(docId);
+            console.log('✅ Document fetched from backend:', doc.title);
+            setDocument(doc);
+          } catch (error) {
+            console.log('⚠️ Document not found in backend');
+            
+            // If exists in localStorage, use it
+            if (existingDoc) {
+              console.log('📦 Using cached document from localStorage:', existingDoc.title);
+              setIsLoadingDoc(false);
+              return;
+            }
+            
+            // Otherwise, try to create from project data
+            if (project) {
+              const projectDoc = project.docs.find((d) => d.id === docId);
+              if (projectDoc) {
+                console.log('🆕 Creating new document from project data');
+                const newDoc = {
+                  id: projectDoc.id,
+                  title: projectDoc.title,
+                  content: "",
+                  projectId: projectId,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                };
+                setDocument(newDoc);
+                // Try to create in backend
+                api.createDocument(newDoc).catch(console.error);
+              }
+            }
+          }
+        } else {
+          // When offline, use localStorage data
+          console.log('📴 Offline: Using localStorage');
+          
+          if (existingDoc) {
+            // Document exists in localStorage
+            console.log('📦 Document loaded from localStorage:', existingDoc.title);
+            setIsLoadingDoc(false);
+          } else {
+            // Document doesn't exist in localStorage yet
+            console.log('⚠️ Document not in localStorage, creating placeholder');
+            if (project) {
+              const projectDoc = project.docs.find((d) => d.id === docId);
+              if (projectDoc) {
+                const newDoc = {
+                  id: projectDoc.id,
+                  title: projectDoc.title,
+                  content: "",
+                  projectId: projectId,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                };
+                setDocument(newDoc);
+              }
+            }
           }
         }
       } finally {
@@ -61,7 +136,8 @@ export default function DocPage() {
     };
 
     fetchDocument();
-  }, [docId, project, projectId, setDocument]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docId, projectId, isOnline]);
 
   if (projectLoading || isLoadingDoc) {
     return (

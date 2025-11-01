@@ -4,6 +4,7 @@ import { Providers } from "@/lib/providers";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Toaster } from "react-hot-toast";
+import { checkLocalStorageStatus } from "@/stores/documentStore";
 
 
 
@@ -23,6 +24,12 @@ export default function App({ Component, pageProps }: AppProps) {
       router.replace("/login");
     }
     setIsLoading(false);
+
+    // Make helper function available in console for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).checkDocumentStorage = checkLocalStorageStatus;
+      console.log('💡 Tip: Run checkDocumentStorage() in console to check localStorage status');
+    }
   }, [router]);
 
   if (isLoading) return null;
