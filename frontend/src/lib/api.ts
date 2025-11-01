@@ -64,6 +64,15 @@ export interface Project {
   }[];
 }
 
+export interface DocumentVersion {
+  versionNumber: number;
+  content: string;
+  timestamp: string;
+  author: string;
+  description: string;
+  _id?: string;
+}
+
 export interface Document {
   id: string;
   title: string;
@@ -71,6 +80,7 @@ export interface Document {
   projectId: string;
   createdAt: string;
   updatedAt: string;
+  versions?: DocumentVersion[];
 }
 
 export interface KanbanBoard {
@@ -246,6 +256,41 @@ export const api = {
       const error = await response.json();
       throw new Error(error.error || 'Failed to signup');
     }
+    return response.json();
+  },
+
+  // Version Management
+  createVersion: async (documentId: string, data: {
+    content: string;
+    author: string;
+    description?: string;
+  }): Promise<DocumentVersion> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create version');
+    return response.json();
+  },
+
+  getVersions: async (documentId: string): Promise<DocumentVersion[]> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions`);
+    if (!response.ok) throw new Error('Failed to fetch versions');
+    return response.json();
+  },
+
+  getVersion: async (documentId: string, versionNumber: number): Promise<DocumentVersion> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}`);
+    if (!response.ok) throw new Error('Failed to fetch version');
+    return response.json();
+  },
+
+  restoreVersion: async (documentId: string, versionNumber: number): Promise<Document> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}/restore`, {
+      method: 'POST',
+    });
+    if (!response.ok) throw new Error('Failed to restore version');
     return response.json();
   },
 };
