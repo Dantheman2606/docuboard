@@ -17,7 +17,11 @@
     "diff-match-patch": "^1.0.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "mongoose": "^8.0.0"
+    "mongoose": "^8.0.0",
+    "ws": "^8.18.3",
+    "y-protocols": "^1.0.6",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

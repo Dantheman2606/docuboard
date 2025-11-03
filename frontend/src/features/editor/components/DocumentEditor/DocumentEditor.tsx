@@ -1,7 +1,7 @@
 // /features/editor/components/DocumentEditor/DocumentEditor.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { useQueryClient } from "@tanstack/react-query";
 import StarterKit from "@tiptap/starter-kit";
@@ -19,6 +19,12 @@ import { EditorStatusBar } from "./EditorStatusBar";
 import { DocumentHeader } from "./DocumentHeader";
 import { useDocumentStore } from "@/stores/documentStore";
 import { api, type DocumentVersion } from "@/lib/api";
+
+interface CollaboratorInfo {
+  userId: string;
+  userName: string;
+  color: string;
+}
 
 interface DocumentEditorProps {
   documentId: string;
@@ -39,6 +45,10 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [collaborators, setCollaborators] = useState<CollaboratorInfo[]>([]);
+  const [isCollabConnected, setIsCollabConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const isRemoteUpdate = useRef(false);
   const document = documents[documentId];
 
   const editor = useEditor({
@@ -79,15 +89,103 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       },
     },
     onUpdate: ({ editor }) => {
+      // Skip if this is a remote update
+      if (isRemoteUpdate.current) {
+        isRemoteUpdate.current = false;
+        return;
+      }
+
       // Save content as JSON for better version control
       const json = JSON.stringify(editor.getJSON());
       updateDocumentContent(documentId, json);
+
+      // Broadcast to other users via WebSocket
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: 'content-update',
+          content: json,
+          documentId,
+        }));
+      }
     },
     onSelectionUpdate: () => {
       // Force toolbar to re-render when selection changes
       setEditorKey((prev) => prev + 1);
     },
   });
+
+  // Setup WebSocket for real-time collaboration
+  useEffect(() => {
+    if (!documentId || !editor) return;
+
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    const user = localStorage.getItem('user');
+    const userData = user ? JSON.parse(user) : null;
+    const userId = userData?._id || userData?.id || Math.random().toString(36).substring(7);
+    const userName = userData?.name || 'Anonymous';
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
+    const ws = new WebSocket(`${wsUrl}/collab`);
+
+    ws.onopen = () => {
+      console.log('🔄 Connected to collaboration server');
+      setIsCollabConnected(true);
+      
+      // Send join message
+      ws.send(JSON.stringify({
+        type: 'join',
+        documentId,
+        userId,
+        userName,
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'content-update' && editor) {
+          // Only update if it's from another user
+          if (data.userId !== userId) {
+            isRemoteUpdate.current = true;
+            const parsed = JSON.parse(data.content);
+            editor.commands.setContent(parsed);
+          }
+        } else if (data.type === 'users') {
+          // Update collaborators list (filter out current user)
+          setCollaborators(data.users.filter((u: CollaboratorInfo) => u.userId !== userId));
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('👋 Disconnected from collaboration server');
+      setIsCollabConnected(false);
+      setCollaborators([]);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsCollabConnected(false);
+    };
+
+    wsRef.current = ws;
+
+    return () => {
+      console.log('🧹 Cleaning up WebSocket connection');
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+      wsRef.current = null;
+    };
+  }, [documentId, editor]);
 
   // Update editor content when document changes
   useEffect(() => {
@@ -97,6 +195,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         const parsed = JSON.parse(document.content);
         if (parsed.type === 'doc') {
           // It's TipTap JSON, use setContent with JSON
+          isRemoteUpdate.current = true;
           editor.commands.setContent(parsed);
         } else {
           // Not valid TipTap JSON, treat as HTML
@@ -239,7 +338,12 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900">
       {/* Status Bar */}
-      <EditorStatusBar isOnline={isOnline} pendingSync={document?.pendingSync} />
+      <EditorStatusBar 
+        isOnline={isOnline} 
+        pendingSync={document?.pendingSync}
+        isCollaborationConnected={isCollabConnected}
+        collaborators={collaborators}
+      />
 
       {/* Document Header with Title and Version Controls */}
       <DocumentHeader
@@ -256,6 +360,8 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         onRestore={handleRestore}
         onToggleExpanded={setIsExpanded}
         isExpanded={isExpanded}
+        collaborators={collaborators}
+        isCollabConnected={isCollabConnected}
       />
 
       {/* Editor Toolbar */}

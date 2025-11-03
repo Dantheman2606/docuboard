@@ -4,8 +4,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const http = require('http');
+const { setupYjsWebSocketServer } = require('./yjs-server');
 
 const app = express();
+const server = http.createServer(app);
 
 // Middleware
 app.use(cors());
@@ -27,14 +30,16 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅ MongoDB connected successfully');
-    app.listen(PORT, () => {
+    
+    // Setup Y.js WebSocket server for real-time collaboration
+    setupYjsWebSocketServer(server);
+    
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🔄 WebSocket server ready for real-time collaboration`);
     });
   })
   .catch((err) => {
