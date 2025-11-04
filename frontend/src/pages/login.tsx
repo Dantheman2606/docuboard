@@ -87,64 +87,64 @@ export default function LoginPage() {
           <title>Sign Up - Docuboard</title>
           <meta name="description" content="Create your Docuboard account" />
         </Head>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="w-full max-w-md px-4">
             {/* Back to Landing Link */}
             <div className="text-center mb-4">
             <button
               onClick={() => router.push("/")}
-              className="text-sm text-slate-600 hover:text-sky-600 transition-colors"
+              className="text-sm text-gray-600 hover:text-black transition-colors font-medium"
             >
               ← Back to home
             </button>
           </div>
-          <Card className="w-full shadow-2xl border border-slate-200/50 backdrop-blur-sm bg-white/90">
+          <Card className="w-full border-2 border-black bg-white">
             <CardHeader className="space-y-2">
-              <CardTitle className="text-center text-3xl font-bold bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">
+              <CardTitle className="text-center text-3xl font-bold text-black tracking-tight">
                 Create Account
               </CardTitle>
-              <p className="text-center text-sm text-slate-600">
+              <p className="text-center text-sm text-gray-600">
                 Sign up to start managing your documents
               </p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSignup} className="flex flex-col gap-4 mt-6">
                 {error && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  <div className="p-3 text-sm text-red-600 bg-red-50 border-2 border-red-600 rounded-md">
                     {error}
                   </div>
                 )}
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Username</label>
+                  <label className="text-sm font-medium text-black">Username</label>
                   <Input
                     value={signupData.username}
                     onChange={(e) => setSignupData({ ...signupData, username: e.target.value })}
                     placeholder="Choose a username"
-                    className="h-11 px-4 border-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Full Name</label>
+                  <label className="text-sm font-medium text-black">Full Name</label>
                   <Input
                     value={signupData.name}
                     onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
                     placeholder="Enter your full name"
-                    className="h-11 px-4 border-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                     disabled={isLoading}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Password</label>
+                  <label className="text-sm font-medium text-black">Password</label>
                   <Input
                     type="password"
                     value={signupData.password}
                     onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                     placeholder="Choose a password"
-                    className="h-11 px-4 border-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                    className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                     disabled={isLoading}
                   />
                 </div>
@@ -152,7 +152,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="mt-2 h-11 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-medium"
+                  className="mt-2 h-11 bg-black hover:bg-gray-800 text-white font-medium"
                 >
                   {isLoading ? "Creating Account..." : "Sign Up"}
                 </Button>
@@ -163,7 +163,7 @@ export default function LoginPage() {
                     setShowSignup(false);
                     setError("");
                   }}
-                  className="text-sm text-sky-600 hover:text-sky-700 underline"
+                  className="text-sm text-black hover:text-gray-600 underline font-medium"
                 >
                   Already have an account? Sign in
                 </button>
@@ -182,33 +182,33 @@ export default function LoginPage() {
         <title>Login - Docuboard</title>
         <meta name="description" content="Sign in to your Docuboard account" />
       </Head>
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-sky-100">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-full max-w-md px-4">
         {/* Back to Landing Link */}
         <div className="text-center mb-4">
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-slate-600 hover:text-sky-600 transition-colors"
+            className="text-sm text-gray-600 hover:text-black transition-colors font-medium"
           >
             ← Back to home
           </button>
         </div>
-        <Card className="w-full shadow-2xl border border-slate-200/50 backdrop-blur-sm bg-white/90">
+        <Card className="w-full border-2 border-black bg-white">
           <CardHeader className="space-y-2">
-            <CardTitle className="text-center text-3xl font-bold bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent">
+            <CardTitle className="text-center text-3xl font-bold text-black tracking-tight">
               Welcome to DocuBoard
             </CardTitle>
-            <p className="text-center text-sm text-slate-600">
+            <p className="text-center text-sm text-gray-600">
               Sign in to start managing your documents
             </p>
-            <p className="text-center text-xs text-slate-500 mt-2">
+            <p className="text-center text-xs text-gray-500 mt-2">
               Demo: john_owner / password123
             </p>
           </CardHeader>
           <CardContent>
             {/* Demo User Selector */}
             <div className="mb-6">
-              <label className="text-sm font-medium text-slate-700 mb-2 block">
+              <label className="text-sm font-medium text-black mb-2 block">
                 Quick Demo Login
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -217,10 +217,10 @@ export default function LoginPage() {
                     key={user.username}
                     type="button"
                     onClick={() => selectDemoUser(user)}
-                    className="p-2 text-left text-xs border border-slate-200 rounded-md hover:border-sky-400 hover:bg-sky-50 transition-all"
+                    className="p-2 text-left text-xs border-2 border-gray-200 hover:border-black hover:bg-gray-50 transition-all"
                   >
-                    <div className="font-medium text-slate-800">{user.name}</div>
-                    <div className="text-slate-500">{user.role}</div>
+                    <div className="font-medium text-black">{user.name}</div>
+                    <div className="text-gray-500">{user.role}</div>
                   </button>
                 ))}
               </div>
@@ -228,39 +228,39 @@ export default function LoginPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
+                <div className="w-full border-t-2 border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-500">Or continue with</span>
+                <span className="bg-white px-2 text-gray-500 font-medium">Or continue with</span>
               </div>
             </div>
 
             <form onSubmit={handleLogin} className="flex flex-col gap-4 mt-6">
               {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                <div className="p-3 text-sm text-red-600 bg-red-50 border-2 border-red-600">
                   {error}
                 </div>
               )}
               
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Username</label>
+                <label className="text-sm font-medium text-black">Username</label>
                 <Input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
-                  className="h-11 px-4 border-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                  className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                   disabled={isLoading}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Password</label>
+                <label className="text-sm font-medium text-black">Password</label>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="h-11 px-4 border-slate-200 focus:border-sky-500 focus:ring-sky-500"
+                  className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                   disabled={isLoading}
                 />
               </div>
@@ -268,7 +268,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="mt-2 h-11 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-medium"
+                className="mt-2 h-11 bg-black hover:bg-gray-800 text-white font-medium"
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
@@ -279,7 +279,7 @@ export default function LoginPage() {
                   setShowSignup(true);
                   setError("");
                 }}
-                className="text-sm text-sky-600 hover:text-sky-700 underline"
+                className="text-sm text-black hover:text-gray-600 underline font-medium"
               >
                 Don't have an account? Sign up
               </button>

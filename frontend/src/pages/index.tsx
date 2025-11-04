@@ -59,38 +59,38 @@ export default function LandingPage() {
         <title>Docuboard - Collaborative Document & Project Management</title>
         <meta name="description" content="Powerful document editing with real-time collaboration, Kanban boards, and team management in one place." />
       </Head>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50/30 via-white to-purple-50/30">
+      <div className="min-h-screen bg-white">
         {/* Navbar */}
-        <nav className="fixed top-0 w-full bg-white/70 backdrop-blur-lg border-b border-indigo-100/50 z-50">
+        <nav className="fixed top-0 w-full bg-white border-b border-gray-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+              <div className="w-8 h-8 bg-black rounded flex items-center justify-center">
                 <FileText className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold text-black tracking-tight">
                 Docuboard
               </span>
             </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
+              <a href="#features" className="text-gray-600 hover:text-black transition-colors font-medium">
                 Features
               </a>
-              <a href="#about" className="text-gray-600 hover:text-indigo-600 transition-colors font-medium">
+              <a href="#about" className="text-gray-600 hover:text-black transition-colors font-medium">
                 About
               </a>
               <Button 
                 variant="ghost" 
                 onClick={() => router.push('/login')}
-                className="text-gray-700 hover:text-indigo-600"
+                className="text-gray-700 hover:text-black hover:bg-gray-100"
               >
                 Sign In
               </Button>
               <Button 
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-200/50"
+                className="bg-black hover:bg-gray-800 text-white"
                 onClick={() => router.push('/login')}
               >
                 Get Started Free
@@ -99,7 +99,7 @@ export default function LandingPage() {
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+              className="md:hidden p-2 rounded-md text-gray-600 hover:text-black hover:bg-gray-100"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,22 +110,22 @@ export default function LandingPage() {
 
           {/* Mobile Navigation */}
           {isMenuOpen && (
-            <div className="md:hidden py-4 space-y-3">
-              <a href="#features" className="block text-gray-600 hover:text-indigo-600 py-2 font-medium">
+            <div className="md:hidden py-4 space-y-3 border-t border-gray-200">
+              <a href="#features" className="block text-gray-600 hover:text-black py-2 font-medium">
                 Features
               </a>
-              <a href="#about" className="block text-gray-600 hover:text-indigo-600 py-2 font-medium">
+              <a href="#about" className="block text-gray-600 hover:text-black py-2 font-medium">
                 About
               </a>
               <Button 
                 variant="ghost" 
-                className="w-full"
+                className="w-full hover:bg-gray-100"
                 onClick={() => router.push('/login')}
               >
                 Sign In
               </Button>
               <Button 
-                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                className="w-full bg-black hover:bg-gray-800 text-white"
                 onClick={() => router.push('/login')}
               >
                 Get Started Free
@@ -138,15 +138,15 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium mb-8 border border-indigo-100">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium mb-8 border border-black">
             <Sparkles className="w-4 h-4" />
             <span>Free Forever</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold text-black mb-6 leading-tight tracking-tight">
             Your Creative Workspace,
             <br />
-            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className="text-black">
               Beautifully Simple
             </span>
           </h1>
@@ -159,7 +159,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-lg px-8 py-6 shadow-xl shadow-indigo-200/50 hover:shadow-2xl hover:shadow-indigo-300/50 transition-all duration-300"
+              className="bg-black hover:bg-gray-800 text-white text-lg px-8 py-6 transition-all duration-300"
               onClick={() => router.push('/login')}
             >
               Get Started Free
@@ -168,7 +168,7 @@ export default function LandingPage() {
             <Button 
               size="lg"
               variant="outline"
-              className="text-lg px-8 py-6 border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300"
+              className="text-lg px-8 py-6 border-2 border-black text-black hover:bg-black hover:text-white transition-all duration-300"
               onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Explore Features
@@ -177,42 +177,41 @@ export default function LandingPage() {
 
           {/* Hero Image/Mockup */}
           <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-300/20 to-purple-300/20 blur-3xl" />
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-indigo-100/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3 flex items-center gap-2 border-b border-indigo-100">
+            <div className="relative bg-white border-2 border-black overflow-hidden">
+              <div className="bg-white px-4 py-3 flex items-center gap-2 border-b-2 border-black">
                 <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-400/80" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
-                  <div className="w-3 h-3 rounded-full bg-green-400/80" />
+                  <div className="w-3 h-3 rounded-full bg-black" />
+                  <div className="w-3 h-3 rounded-full bg-gray-400" />
+                  <div className="w-3 h-3 rounded-full bg-gray-300" />
                 </div>
-                <div className="flex-1 text-center text-sm text-indigo-700 font-medium">Docuboard - Your Projects</div>
+                <div className="flex-1 text-center text-sm text-black font-medium">Docuboard - Your Projects</div>
               </div>
-              <div className="p-8 bg-gradient-to-br from-indigo-50/30 via-white to-purple-50/30">
+              <div className="p-8 bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100/50 hover:shadow-xl transition-shadow">
+                  <div className="bg-white p-6 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-transform">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-black flex items-center justify-center">
                         <FileText className="w-5 h-5 text-white" />
                       </div>
-                      <h3 className="font-semibold text-gray-900">Documents</h3>
+                      <h3 className="font-semibold text-black">Documents</h3>
                     </div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-indigo-100 rounded-full w-3/4" />
-                      <div className="h-3 bg-indigo-50 rounded-full w-1/2" />
-                      <div className="h-3 bg-indigo-100 rounded-full w-2/3" />
+                      <div className="h-3 bg-gray-200 w-3/4" />
+                      <div className="h-3 bg-gray-100 w-1/2" />
+                      <div className="h-3 bg-gray-200 w-2/3" />
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-xl shadow-lg border border-purple-100/50 hover:shadow-xl transition-shadow">
+                  <div className="bg-white p-6 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-transform">
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-black flex items-center justify-center">
                         <LayoutGrid className="w-5 h-5 text-white" />
                       </div>
-                      <h3 className="font-semibold text-gray-900">Kanban Boards</h3>
+                      <h3 className="font-semibold text-black">Kanban Boards</h3>
                     </div>
                     <div className="space-y-2">
-                      <div className="h-3 bg-purple-100 rounded-full w-2/3" />
-                      <div className="h-3 bg-purple-50 rounded-full w-3/4" />
-                      <div className="h-3 bg-purple-100 rounded-full w-1/2" />
+                      <div className="h-3 bg-gray-200 w-2/3" />
+                      <div className="h-3 bg-gray-100 w-3/4" />
+                      <div className="h-3 bg-gray-200 w-1/2" />
                     </div>
                   </div>
                 </div>
@@ -223,10 +222,10 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 px-4 bg-gradient-to-b from-white to-indigo-50/30">
+      <section id="features" className="py-24 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-black mb-4 tracking-tight">
               Everything you need, nothing you don't
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -238,12 +237,12 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="group p-8 rounded-2xl border border-indigo-100/50 hover:border-indigo-200 hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                className="group p-8 border-2 border-gray-200 hover:border-black transition-all duration-300 bg-white"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center text-indigo-600 mb-5 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-indigo-100">
+                <div className="w-14 h-14 bg-black flex items-center justify-center text-white mb-5 group-hover:scale-110 transition-transform duration-300">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                <h3 className="text-xl font-bold text-black mb-3">
                   {feature.title}
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
@@ -256,26 +255,23 @@ export default function LandingPage() {
       </section>
 
       {/* About/CTA Section */}
-      <section id="about" className="py-24 px-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDE0YzMuMzE0IDAgNiAyLjY4NiA2IDZzLTIuNjg2IDYtNiA2LTYtMi42ODYtNi02IDIuNjg2LTYgNi02ek0yNCA0NGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
-        
+      <section id="about" className="py-24 px-4 bg-black text-white relative overflow-hidden">
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6 border border-white/20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black text-sm font-medium mb-6 border-2 border-white">
             <Sparkles className="w-4 h-4" />
             <span>100% Free • Forever</span>
           </div>
           
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 leading-tight tracking-tight">
             Start creating something amazing today
           </h2>
-          <p className="text-xl mb-10 text-white/90 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-xl mb-10 text-gray-300 leading-relaxed max-w-2xl mx-auto">
             {/* No credit card required. No time limits. No hidden fees.  */}
             Just sign up and start building your projects right away.
           </p>
           <Button 
             size="lg"
-            className="bg-white text-indigo-600 hover:bg-indigo-50 text-lg px-10 py-7 shadow-2xl hover:shadow-white/20 hover:scale-105 transition-all duration-300 font-semibold"
+            className="bg-white text-black hover:bg-gray-200 text-lg px-10 py-7 transition-all duration-300 font-semibold"
             onClick={() => router.push('/login')}
           >
             Get Started Now
@@ -285,16 +281,16 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-b from-gray-50 to-white text-gray-600 py-12 px-4 border-t border-gray-100">
+      <footer className="bg-white text-gray-600 py-12 px-4 border-t-2 border-black">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             {/* Company Info */}
             {/* <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                <div className="w-8 h-8 bg-black flex items-center justify-center">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Docuboard</span>
+                <span className="text-xl font-bold text-black">Docuboard</span>
               </div>
               <p className="text-sm text-gray-500">
                 Your creative workspace for documents and project management—completely free.
@@ -303,51 +299,51 @@ export default function LandingPage() {
 
             {/* Product */}
             {/* <div>
-              <h4 className="text-gray-900 font-semibold mb-4">Product</h4>
+              <h4 className="text-black font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#features" className="hover:text-indigo-600 transition-colors">Features</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Updates</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Roadmap</a></li>
-                <li><a href="/login" className="hover:text-indigo-600 transition-colors">Get Started</a></li>
+                <li><a href="#features" className="hover:text-black transition-colors">Features</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Updates</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Roadmap</a></li>
+                <li><a href="/login" className="hover:text-black transition-colors">Get Started</a></li>
               </ul>
             </div> */}
 
             {/* Company */}
             {/* <div>
-              <h4 className="text-gray-900 font-semibold mb-4">Company</h4>
+              <h4 className="text-black font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#about" className="hover:text-indigo-600 transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Contact</a></li>
+                <li><a href="#about" className="hover:text-black transition-colors">About</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Blog</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Contact</a></li>
               </ul>
             </div> */}
 
             {/* Legal */}
             {/* <div>
-              <h4 className="text-gray-900 font-semibold mb-4">Legal</h4>
+              <h4 className="text-black font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Security</a></li>
-                <li><a href="#" className="hover:text-indigo-600 transition-colors">Cookies</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Privacy</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Terms</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Security</a></li>
+                <li><a href="#" className="hover:text-black transition-colors">Cookies</a></li>
               </ul>
             </div> */}
           </div>
 
           {/* Bottom Bar */}
-          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="border-t-2 border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">
               © 2025 Docuboard. Made with ❤️ for creators everywhere.
             </p>
             {/* <div className="flex gap-6">
-              <a href="#" className="hover:text-indigo-600 transition-colors">
+              <a href="#" className="hover:text-black transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-indigo-600 transition-colors">
+              <a href="#" className="hover:text-black transition-colors">
                 <Github className="w-5 h-5" />
               </a>
-              <a href="#" className="hover:text-indigo-600 transition-colors">
+              <a href="#" className="hover:text-black transition-colors">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div> */}
