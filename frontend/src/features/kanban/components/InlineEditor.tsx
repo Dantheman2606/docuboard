@@ -2,6 +2,8 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Mention } from '@/features/editor/extensions/Mention';
+import { mentionSuggestion } from '@/lib/mentionSuggestion';
 import { useEffect } from 'react';
 
 interface InlineEditorProps {
@@ -34,11 +36,23 @@ export function InlineEditor({
       Placeholder.configure({
         placeholder,
       }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: mentionSuggestion,
+      }),
     ],
     content,
     editable,
     onUpdate: ({ editor }) => {
-      onUpdate(editor.getText());
+      // Get text content including mentions
+      const html = editor.getHTML();
+      // Extract text with @mentions preserved
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      const textWithMentions = div.textContent || '';
+      onUpdate(textWithMentions);
     },
     onBlur: () => {
       onBlur?.();
@@ -52,8 +66,13 @@ export function InlineEditor({
 
   // Update content when it changes externally
   useEffect(() => {
-    if (editor && content !== editor.getText()) {
-      editor.commands.setContent(content);
+    if (editor) {
+      const div = document.createElement('div');
+      div.innerHTML = editor.getHTML();
+      const currentText = div.textContent || '';
+      if (content !== currentText) {
+        editor.commands.setContent(content);
+      }
     }
   }, [content, editor]);
 

@@ -1,4 +1,4 @@
-// /components/ActivityFeed/ActivityFeed.tsx
+// features/activity/components/ActivityFeed.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { 

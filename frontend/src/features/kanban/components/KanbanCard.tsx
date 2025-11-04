@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Calendar, User, Trash2 } from "lucide-react";
 import { InlineEditor } from "./InlineEditor";
 import { useKanbanStore } from "@/stores/kanbanStore";
+import { extractMentions } from "@/lib/mentionUtils";
+import { api } from "@/lib/api";
+import toast from "react-hot-toast";
 import {
   Dialog,
   DialogContent,
@@ -60,12 +63,39 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
     updateCard(boardId, card.id, { description: newDesc.trim() });
   };
 
-  const handleDescBlur = () => {
+  const handleDescBlur = async () => {
     setIsEditingDesc(false);
     // Only log activity if the description actually changed
     if (card.description !== originalDesc) {
       updateCardWithActivity(boardId, card.id, { description: card.description });
       setOriginalDesc(card.description);
+      
+      // Check for mentions in the description
+      if (card.description) {
+        const mentionedUsernames = extractMentions(card.description);
+        if (mentionedUsernames.length > 0) {
+          try {
+            const user = localStorage.getItem('user');
+            if (user) {
+              const userObj = JSON.parse(user);
+              await api.createMentionNotifications({
+                mentionedUsernames,
+                mentionedBy: {
+                  id: userObj.id,
+                  name: userObj.name,
+                  username: userObj.username,
+                },
+                context: card.description.substring(0, 150),
+                boardId: boardId,
+                cardId: card.id,
+              });
+              toast.success(`Mentioned ${mentionedUsernames.length} user(s) in card`);
+            }
+          } catch (error) {
+            console.error('Failed to create mention notifications:', error);
+          }
+        }
+      }
     }
   };
 

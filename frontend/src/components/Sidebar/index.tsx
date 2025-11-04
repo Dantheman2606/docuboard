@@ -21,7 +21,7 @@ import { KanbanBoardsList } from "./KanbanBoardsList";
 import { LogoutButton } from "./LogoutButton";
 import { AddBoardModal } from "./modals/AddBoardModal";
 import { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
-import { ActivityFeed } from "@/components/ActivityFeed";
+import { ActivityFeed } from "@/features/activity";
 import { ActivityButton } from "./ActivityButton";
 
 const Sidebar = () => {

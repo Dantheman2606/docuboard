@@ -33,7 +33,8 @@ const activitySchema = new mongoose.Schema({
       'board_deleted',
       'document_created',
       'document_updated',
-      'document_deleted'
+      'document_deleted',
+      'user_mention'
     ]
   },
   action: {
@@ -45,6 +46,11 @@ const activitySchema = new mongoose.Schema({
     name: String,
     username: String
   },
+  mentionedUsers: [{
+    id: String,
+    name: String,
+    username: String
+  }],
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed

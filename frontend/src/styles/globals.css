@@ -241,3 +241,20 @@
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
 }
+
+/* Mention styles */
+.mention {
+  @apply bg-blue-100 text-blue-800 px-1 rounded font-medium cursor-pointer;
+}
+
+.mention:hover {
+  @apply bg-blue-200;
+}
+
+.dark .mention {
+  @apply bg-blue-900 text-blue-200;
+}
+
+.dark .mention:hover {
+  @apply bg-blue-800;
+}

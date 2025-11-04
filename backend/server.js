@@ -21,6 +21,7 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/kanban', require('./routes/kanban'));
 app.use('/api/activity', require('./routes/activity'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check
 app.get('/api/health', (req, res) => {

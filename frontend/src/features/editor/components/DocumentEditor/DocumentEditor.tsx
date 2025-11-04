@@ -13,6 +13,9 @@ import Highlight from "@tiptap/extension-highlight";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { FontFamily } from "@tiptap/extension-font-family";
+import { Mention } from "../../extensions/Mention";
+import { mentionSuggestion } from "@/lib/mentionSuggestion";
+import { extractMentionsFromTiptap } from "@/lib/mentionUtils";
 import { EditorToolbar } from "../EditorToolbar";
 import { VersionDiff } from "../VersionDiff";
 import { EditorStatusBar } from "./EditorStatusBar";
@@ -20,6 +23,7 @@ import { DocumentHeader } from "./DocumentHeader";
 import { RemoteCursor } from "../RemoteCursor";
 import { useDocumentStore } from "@/stores/documentStore";
 import { api, type DocumentVersion } from "@/lib/api";
+import toast from "react-hot-toast";
 
 interface CollaboratorInfo {
   userId: string;
@@ -98,6 +102,12 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       }),
       Highlight.configure({
         multicolor: true,
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: mentionSuggestion,
       }),
     ],
     content: "",
@@ -465,9 +475,34 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
     try {
       const user = localStorage.getItem('user');
       const userName = user ? JSON.parse(user).name : 'Unknown';
+      const userObj = user ? JSON.parse(user) : null;
       
       // Get editor content as JSON
       const content = JSON.stringify(editor.getJSON());
+      const editorJSON = editor.getJSON();
+      const textContent = editor.getText();
+      
+      // Extract and notify mentioned users
+      const mentionedUsernames = extractMentionsFromTiptap(editorJSON);
+      if (mentionedUsernames.length > 0 && userObj) {
+        try {
+          await api.createMentionNotifications({
+            mentionedUsernames,
+            mentionedBy: {
+              id: userObj.id,
+              name: userObj.name,
+              username: userObj.username,
+            },
+            context: textContent.substring(0, 150),
+            projectId: projectId,
+            documentId: documentId,
+          });
+          toast.success(`Mentioned ${mentionedUsernames.length} user(s)`);
+        } catch (error) {
+          console.error('Failed to create mention notifications:', error);
+          // Don't block save if notifications fail
+        }
+      }
       
       const version = await api.createVersion(documentId, {
         content,

@@ -1,10 +1,12 @@
 import "@/styles/globals.css";
+import "tippy.js/dist/tippy.css";
 import type { AppProps } from "next/app";
 import { Providers } from "@/lib/providers";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Toaster } from "react-hot-toast";
 import { checkLocalStorageStatus } from "@/stores/documentStore";
+import { NotificationProvider } from "@/features/activity";
 
 
 
@@ -46,9 +48,14 @@ export default function App({ Component, pageProps }: AppProps) {
       </Providers>
     );
   }
-  return(
+  
+  // Authenticated routes get notification polling
+  return (
     <Providers>
-      <Component {...pageProps} />
+      <NotificationProvider>
+        <Component {...pageProps} />
+        <Toaster position="top-right" />
+      </NotificationProvider>
     </Providers>
-  )
+  );
 }

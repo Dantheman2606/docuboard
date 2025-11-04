@@ -83,6 +83,29 @@ export interface Document {
   versions?: DocumentVersion[];
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'mention' | 'comment' | 'assignment' | 'system';
+  message: string;
+  read: boolean;
+  metadata: {
+    projectId?: string;
+    documentId?: string;
+    boardId?: string;
+    cardId?: string;
+    mentionedBy?: {
+      id: string;
+      name: string;
+      username: string;
+    };
+    context?: string;
+  };
+  timestamp: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface KanbanBoard {
   id: string;
   name: string;
@@ -331,6 +354,66 @@ export const api = {
       body: JSON.stringify(data),
     });
     if (!response.ok) throw new Error('Failed to create activity');
+    return response.json();
+  },
+
+  // Notifications
+  getNotifications: async (userId: string, options?: { limit?: number; offset?: number; unreadOnly?: boolean }): Promise<Notification[]> => {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.unreadOnly) params.append('unreadOnly', 'true');
+    
+    const url = `${API_BASE_URL}/notifications/user/${userId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetchWithOfflineDetection(url);
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+
+  getUnreadCount: async (userId: string): Promise<number> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/user/${userId}/unread-count`);
+    if (!response.ok) throw new Error('Failed to fetch unread count');
+    const data = await response.json();
+    return data.count;
+  },
+
+  markNotificationAsRead: async (notificationId: string): Promise<Notification> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
+    return response.json();
+  },
+
+  markAllNotificationsAsRead: async (userId: string): Promise<void> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/user/${userId}/read-all`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) throw new Error('Failed to mark all notifications as read');
+  },
+
+  createMentionNotifications: async (data: {
+    mentionedUsernames: string[];
+    mentionedBy: { id: string; name: string; username: string };
+    context?: string;
+    projectId?: string;
+    documentId?: string;
+    boardId?: string;
+    cardId?: string;
+  }): Promise<{ notificationsCreated: number }> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/create-mentions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create mention notifications');
+    return response.json();
+  },
+
+  searchUsers: async (query?: string): Promise<Array<{ _id: string; username: string; name: string }>> => {
+    const params = query ? `?query=${encodeURIComponent(query)}` : '';
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/users/search${params}`);
+    if (!response.ok) throw new Error('Failed to search users');
     return response.json();
   },
 };
