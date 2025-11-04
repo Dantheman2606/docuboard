@@ -49,10 +49,10 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   const [isCollabConnected, setIsCollabConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const isRemoteUpdate = useRef(false);
+  const isLocalUpdate = useRef(false);
   const document = documents[documentId];
 
   const editor = useEditor({
-    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {
@@ -94,6 +94,9 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         isRemoteUpdate.current = false;
         return;
       }
+
+      // Mark as local update to prevent feedback loop
+      isLocalUpdate.current = true;
 
       // Save content as JSON for better version control
       const json = JSON.stringify(editor.getJSON());
@@ -189,6 +192,12 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
 
   // Update editor content when document changes
   useEffect(() => {
+    // Skip if this update was triggered by local typing
+    if (isLocalUpdate.current) {
+      isLocalUpdate.current = false;
+      return;
+    }
+
     if (editor && document?.content) {
       try {
         // Try to parse as JSON first (TipTap JSON format)

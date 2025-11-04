@@ -22,7 +22,6 @@ export function InlineEditor({
   editable = true 
 }: InlineEditorProps) {
   const editor = useEditor({
-    immediatelyRender: false, // Fix SSR hydration issue
     extensions: [
       StarterKit.configure({
         heading: false,
