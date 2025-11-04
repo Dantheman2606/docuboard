@@ -94,6 +94,23 @@ function setupYjsWebSocketServer(server) {
               }
             });
           }
+        } else if (data.type === 'cursor-move' && currentDocumentId) {
+          // Broadcast cursor position to all other users
+          const room = documentRooms.get(currentDocumentId);
+          if (room) {
+            room.forEach((client) => {
+              if (client !== ws && client.readyState === 1) {
+                client.send(JSON.stringify({
+                  type: 'cursor-move',
+                  userId: currentUserId,
+                  userName: currentUserName,
+                  color: getUserColor(currentUserId),
+                  docPosition: data.docPosition, // Send document position instead of screen coords
+                  documentId: currentDocumentId,
+                }));
+              }
+            });
+          }
         }
       } catch (error) {
         console.error('Error processing message:', error);

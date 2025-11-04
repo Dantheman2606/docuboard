@@ -218,3 +218,10 @@
     @apply my-8 border-gray-300 dark:border-gray-700;
   }
 }
+
+/* Remote Cursor Styles */
+.remote-cursor-container {
+  will-change: transform;
+  pointer-events: none;
+  user-select: none;
+}

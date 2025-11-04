@@ -17,6 +17,7 @@ import { EditorToolbar } from "../EditorToolbar";
 import { VersionDiff } from "../VersionDiff";
 import { EditorStatusBar } from "./EditorStatusBar";
 import { DocumentHeader } from "./DocumentHeader";
+import { RemoteCursor } from "../RemoteCursor";
 import { useDocumentStore } from "@/stores/documentStore";
 import { api, type DocumentVersion } from "@/lib/api";
 
@@ -24,6 +25,20 @@ interface CollaboratorInfo {
   userId: string;
   userName: string;
   color: string;
+}
+
+interface CursorPosition {
+  x: number;
+  y: number;
+}
+
+interface RemoteCursorInfo {
+  userId: string;
+  userName: string;
+  color: string;
+  position: CursorPosition | null;
+  docPosition: number; // Track document position (character offset)
+  lastUpdate: number; // Timestamp of last update
 }
 
 interface DocumentEditorProps {
@@ -47,9 +62,13 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<CollaboratorInfo[]>([]);
   const [isCollabConnected, setIsCollabConnected] = useState(false);
+  const [remoteCursors, setRemoteCursors] = useState<Map<string, RemoteCursorInfo>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
   const isRemoteUpdate = useRef(false);
   const isLocalUpdate = useRef(false);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const cursorThrottleRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUserInteraction = useRef<number>(0); // Track last user interaction
   const document = documents[documentId];
 
   const editor = useEditor({
@@ -95,6 +114,9 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         return;
       }
 
+      // Mark user as actively typing
+      lastUserInteraction.current = Date.now();
+
       // Mark as local update to prevent feedback loop
       isLocalUpdate.current = true;
 
@@ -109,11 +131,50 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
           content: json,
           documentId,
         }));
+
+        // Send cursor position immediately when typing
+        try {
+          const { from } = editor.state.selection;
+          wsRef.current.send(JSON.stringify({
+            type: 'cursor-move',
+            docPosition: from,
+            documentId,
+          }));
+        } catch (error) {
+          // Ignore errors
+        }
       }
     },
-    onSelectionUpdate: () => {
+    onSelectionUpdate: ({ editor, transaction }) => {
       // Force toolbar to re-render when selection changes
       setEditorKey((prev) => prev + 1);
+
+      // Only send cursor updates if user is actively interacting
+      // Don't send if selection changed due to remote content updates
+      const isUserInteraction = transaction?.getMeta('pointer') || transaction?.getMeta('uiEvent') === 'drop';
+      
+      // Send cursor position only for actual user interactions (clicks, drags)
+      if (isUserInteraction && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        lastUserInteraction.current = Date.now();
+        
+        if (cursorThrottleRef.current) {
+          clearTimeout(cursorThrottleRef.current);
+        }
+
+        cursorThrottleRef.current = setTimeout(() => {
+          try {
+            const { from } = editor.state.selection;
+            
+            wsRef.current?.send(JSON.stringify({
+              type: 'cursor-move',
+              docPosition: from,
+              documentId,
+            }));
+          } catch (error) {
+            // Ignore errors from invalid positions
+          }
+        }, 100);
+      }
     },
   });
 
@@ -155,13 +216,74 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         if (data.type === 'content-update' && editor) {
           // Only update if it's from another user
           if (data.userId !== userId) {
-            isRemoteUpdate.current = true;
+            // Check if content is actually different to avoid unnecessary updates
             const parsed = JSON.parse(data.content);
-            editor.commands.setContent(parsed);
+            const currentContent = JSON.stringify(editor.getJSON());
+            
+            // Only update if content has actually changed
+            if (currentContent !== data.content) {
+              // Mark as remote update to prevent feedback loop
+              isRemoteUpdate.current = true;
+              
+              // Get current selection BEFORE update
+              const { selection } = editor.state;
+              const cursorPos = selection.$anchor.pos;
+              
+              // Apply the content update
+              editor.commands.setContent(parsed, false);
+              
+              // Restore cursor position in next tick to avoid race conditions
+              // But only if the cursor position is still valid
+              requestAnimationFrame(() => {
+                try {
+                  const newDocSize = editor.state.doc.content.size;
+                  // Keep cursor at same position if valid, otherwise move to end
+                  const newPos = Math.min(cursorPos, newDocSize);
+                  
+                  if (newPos > 0 && newPos <= newDocSize) {
+                    editor.commands.focus();
+                    editor.commands.setTextSelection(newPos);
+                  }
+                } catch (e) {
+                  // Ignore errors in cursor restoration
+                }
+              });
+            }
+          }
+        } else if (data.type === 'cursor-move') {
+          // Update remote cursor position - only show for actively typing users
+          if (data.userId !== userId) {
+            setRemoteCursors((prev) => {
+              const next = new Map(prev);
+              next.set(data.userId, {
+                userId: data.userId,
+                userName: data.userName,
+                color: data.color,
+                position: null, // Will be calculated from docPosition
+                docPosition: data.docPosition,
+                lastUpdate: Date.now(), // Track when user was last active
+              });
+              return next;
+            });
           }
         } else if (data.type === 'users') {
           // Update collaborators list (filter out current user)
-          setCollaborators(data.users.filter((u: CollaboratorInfo) => u.userId !== userId));
+          const otherUsers = data.users.filter((u: CollaboratorInfo) => u.userId !== userId);
+          setCollaborators(otherUsers);
+          
+          // Remove cursors for users who left
+          setRemoteCursors((prev) => {
+            const next = new Map(prev);
+            const currentUserIds = new Set(otherUsers.map((u: CollaboratorInfo) => u.userId));
+            
+            // Remove cursors for users no longer in the room
+            for (const [id] of prev) {
+              if (!currentUserIds.has(id)) {
+                next.delete(id);
+              }
+            }
+            return next;
+          });
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
@@ -172,6 +294,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       console.log('👋 Disconnected from collaboration server');
       setIsCollabConnected(false);
       setCollaborators([]);
+      setRemoteCursors(new Map());
     };
 
     ws.onerror = (error) => {
@@ -187,8 +310,75 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         ws.close();
       }
       wsRef.current = null;
+      if (cursorThrottleRef.current) {
+        clearTimeout(cursorThrottleRef.current);
+      }
     };
   }, [documentId, editor]);
+
+  // Convert document positions to screen coordinates for remote cursors
+  useEffect(() => {
+    if (!editor) return;
+
+    // Calculate screen positions from document positions
+    // This runs when cursor data changes OR when we need to recalculate positions
+    const recalculatePositions = () => {
+      setRemoteCursors((prev) => {
+        if (prev.size === 0) return prev;
+
+        const next = new Map();
+        const now = Date.now();
+
+        for (const [userId, cursorInfo] of prev) {
+          // Remove idle cursors (no updates for 3+ seconds)
+          // Only show cursors for actively typing users
+          if (now - cursorInfo.lastUpdate > 3000) {
+            continue; // Skip - user is idle
+          }
+
+          try {
+            const maxPos = editor.state.doc.content.size;
+            // Clamp to valid range - if cursor is beyond document, show at end
+            const safePos = Math.max(0, Math.min(cursorInfo.docPosition, maxPos));
+            
+            // Calculate screen coordinates
+            const coords = editor.view.coordsAtPos(safePos);
+            
+            next.set(userId, {
+              ...cursorInfo,
+              position: {
+                x: coords.left,
+                y: coords.top,
+              },
+            });
+          } catch (error) {
+            // Invalid position, skip this cursor
+          }
+        }
+
+        return next;
+      });
+    };
+
+    // Recalculate immediately when cursor data arrives
+    recalculatePositions();
+
+    // Recalculate on scroll/resize since screen coords change
+    const handleScroll = () => requestAnimationFrame(recalculatePositions);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+
+    // Periodically clean up idle cursors (every 1 second)
+    const cleanupInterval = setInterval(() => {
+      recalculatePositions(); // This will remove cursors older than 3 seconds
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+      clearInterval(cleanupInterval);
+    };
+  }, [editor, remoteCursors]); // Run when new cursor data arrives
 
   // Update editor content when document changes
   useEffect(() => {
@@ -379,8 +569,20 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={editorContainerRef} className="flex-1 overflow-y-auto relative">
         <EditorContent editor={editor} />
+        
+        {/* Remote Cursors - only shown for actively typing users */}
+        {Array.from(remoteCursors.values()).map((cursor) => (
+          <RemoteCursor
+            key={cursor.userId}
+            userId={cursor.userId}
+            userName={cursor.userName}
+            color={cursor.color}
+            position={cursor.position}
+            lastUpdate={cursor.lastUpdate}
+          />
+        ))}
       </div>
 
       {/* Version Diff Modal */}
