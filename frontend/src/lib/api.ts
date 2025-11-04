@@ -95,14 +95,31 @@ export interface KanbanBoard {
   cards: Record<string, {
     id: string;
     title: string;
-    description: string;
+    description?: string;
     assignee?: string;
     labels?: string[];
     dueDate?: string;
+    docId?: string;
   }>;
   columnOrder: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Activity {
+  id: string;
+  projectId: string;
+  boardId?: string;
+  cardId?: string;
+  type: 'card_created' | 'card_updated' | 'card_moved' | 'card_deleted' | 'board_created' | 'board_updated' | 'board_deleted' | 'document_created' | 'document_updated' | 'document_deleted';
+  action: string;
+  user: {
+    id?: string;
+    name: string;
+    username?: string;
+  };
+  metadata?: Record<string, any>;
+  timestamp: string;
 }
 
 export const api = {
@@ -291,6 +308,29 @@ export const api = {
       method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to restore version');
+    return response.json();
+  },
+
+  // Activity Feed
+  getActivities: async (projectId: string, options?: { limit?: number; offset?: number; boardId?: string }): Promise<Activity[]> => {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.boardId) params.append('boardId', options.boardId);
+    
+    const url = `${API_BASE_URL}/activity/project/${projectId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetchWithOfflineDetection(url);
+    if (!response.ok) throw new Error('Failed to fetch activities');
+    return response.json();
+  },
+
+  createActivity: async (data: Partial<Activity>): Promise<Activity> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create activity');
     return response.json();
   },
 };

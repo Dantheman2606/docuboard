@@ -34,20 +34,38 @@ const labelColors: Record<string, string> = {
 };
 
 export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
-  const { updateCard, deleteCard } = useKanbanStore();
+  const { updateCard, updateCardWithActivity, deleteCard } = useKanbanStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [originalTitle, setOriginalTitle] = useState(card.title);
+  const [originalDesc, setOriginalDesc] = useState(card.description);
 
   const handleTitleUpdate = (newTitle: string) => {
-    if (newTitle.trim() && newTitle !== card.title) {
-      updateCard(boardId, card.id, { title: newTitle.trim() });
+    // Update on every keystroke (no activity logging)
+    updateCard(boardId, card.id, { title: newTitle.trim() });
+  };
+
+  const handleTitleBlur = () => {
+    setIsEditingTitle(false);
+    // Only log activity if the title actually changed
+    if (card.title !== originalTitle) {
+      updateCardWithActivity(boardId, card.id, { title: card.title });
+      setOriginalTitle(card.title);
     }
   };
 
   const handleDescUpdate = (newDesc: string) => {
-    if (newDesc.trim() !== card.description) {
-      updateCard(boardId, card.id, { description: newDesc.trim() });
+    // Update on every keystroke (no activity logging)
+    updateCard(boardId, card.id, { description: newDesc.trim() });
+  };
+
+  const handleDescBlur = () => {
+    setIsEditingDesc(false);
+    // Only log activity if the description actually changed
+    if (card.description !== originalDesc) {
+      updateCardWithActivity(boardId, card.id, { description: card.description });
+      setOriginalDesc(card.description);
     }
   };
 
@@ -96,7 +114,10 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsEditingTitle(true);
+                    if (!isEditingTitle) {
+                      setOriginalTitle(card.title);
+                      setIsEditingTitle(true);
+                    }
                   }}
                   className={`flex-1 ${!isEditingTitle && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
                 >
@@ -105,7 +126,7 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
                       content={card.title}
                       placeholder="Card title..."
                       onUpdate={handleTitleUpdate}
-                      onBlur={() => setIsEditingTitle(false)}
+                      onBlur={handleTitleBlur}
                       className="font-medium text-sm text-gray-900 dark:text-gray-100"
                     />
                   ) : (
@@ -130,7 +151,10 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsEditingDesc(true);
+                  if (!isEditingDesc) {
+                    setOriginalDesc(card.description);
+                    setIsEditingDesc(true);
+                  }
                 }}
                 className={`${!isEditingDesc && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
               >
@@ -139,7 +163,7 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
                     content={card.description || ''}
                     placeholder="Add description..."
                     onUpdate={handleDescUpdate}
-                    onBlur={() => setIsEditingDesc(false)}
+                    onBlur={handleDescBlur}
                     className="text-xs text-gray-600 dark:text-gray-400"
                   />
                 ) : (

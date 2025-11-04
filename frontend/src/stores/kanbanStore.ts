@@ -1,8 +1,27 @@
 // /stores/kanbanStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { KanbanBoard, Card } from "@/lib/mockData";
-import { api } from "@/lib/api";
+import type { Card } from "@/lib/mockData";
+import { api, type KanbanBoard } from "@/lib/api";
+
+// Helper function to get current user from localStorage
+const getCurrentUser = () => {
+  if (typeof window === 'undefined') return { name: 'Unknown User' };
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return {
+        id: user.id,
+        name: user.name || user.username || 'Unknown User',
+        username: user.username
+      };
+    }
+  } catch (e) {
+    console.error('Error getting user:', e);
+  }
+  return { name: 'Unknown User' };
+};
 
 interface KanbanState {
   boards: Record<string, KanbanBoard>;
@@ -15,6 +34,7 @@ interface KanbanState {
     destinationIndex: number
   ) => void;
   updateCard: (boardId: string, cardId: string, updates: Partial<Card>) => void;
+  updateCardWithActivity: (boardId: string, cardId: string, updates: Partial<Card>) => void;
   addCard: (boardId: string, columnId: string, card: Card) => void;
   deleteCard: (boardId: string, cardId: string) => void;
   syncBoardToBackend: (boardId: string) => Promise<void>;
@@ -95,6 +115,29 @@ export const useKanbanStore = create<KanbanState>()(
           const board = useKanbanStore.getState().boards[boardId];
           if (board) {
             api.updateKanbanBoard(boardId, board as any).catch(console.error);
+            
+            // Log activity
+            const card = board.cards[cardId];
+            const sourceCol = board.columns[sourceColumnId];
+            const destCol = board.columns[destinationColumnId];
+            
+            if (sourceColumnId !== destinationColumnId) {
+              api.createActivity({
+                projectId: board.projectId,
+                boardId: boardId,
+                cardId: cardId,
+                type: 'card_moved',
+                action: `moved card "${card?.title || 'Untitled'}" from ${sourceCol?.title || 'column'} to ${destCol?.title || 'column'}`,
+                user: getCurrentUser(),
+                metadata: {
+                  cardTitle: card?.title,
+                  fromColumn: sourceCol?.title,
+                  toColumn: destCol?.title,
+                  fromColumnId: sourceColumnId,
+                  toColumnId: destinationColumnId
+                }
+              }).catch(console.error);
+            }
           }
         }, 0);
       },
@@ -124,11 +167,66 @@ export const useKanbanStore = create<KanbanState>()(
           };
         });
         
-        // Sync to backend after state update
+        // Sync to backend after state update (no activity logging)
         setTimeout(() => {
           const board = useKanbanStore.getState().boards[boardId];
           if (board) {
             api.updateKanbanBoard(boardId, board as any).catch(console.error);
+          }
+        }, 0);
+      },
+
+      updateCardWithActivity: (boardId, cardId, updates) => {
+        // First update the card
+        const state = get();
+        const board = state.boards[boardId];
+        const card = board?.cards[cardId];
+        
+        set((state) => {
+          const board = state.boards[boardId];
+          if (!board) return state;
+
+          const card = board.cards[cardId];
+          if (!card) return state;
+
+          return {
+            boards: {
+              ...state.boards,
+              [boardId]: {
+                ...board,
+                cards: {
+                  ...board.cards,
+                  [cardId]: {
+                    ...card,
+                    ...updates,
+                  },
+                },
+              },
+            },
+          };
+        });
+        
+        // Sync to backend and log activity
+        setTimeout(() => {
+          const board = useKanbanStore.getState().boards[boardId];
+          if (board) {
+            api.updateKanbanBoard(boardId, board as any).catch(console.error);
+            
+            // Log activity for card update
+            const updatedCard = board.cards[cardId];
+            const updatedFields = Object.keys(updates).join(', ');
+            api.createActivity({
+              projectId: board.projectId,
+              boardId: boardId,
+              cardId: cardId,
+              type: 'card_updated',
+              action: `updated card "${updatedCard?.title || 'Untitled'}" (${updatedFields})`,
+              user: getCurrentUser(),
+              metadata: {
+                cardTitle: updatedCard?.title,
+                updates: updates
+              }
+            }).catch(console.error);
           }
         }, 0);
       },
@@ -167,11 +265,33 @@ export const useKanbanStore = create<KanbanState>()(
           const board = useKanbanStore.getState().boards[boardId];
           if (board) {
             api.updateKanbanBoard(boardId, board as any).catch(console.error);
+            
+            // Log activity for new card
+            const column = board.columns[columnId];
+            api.createActivity({
+              projectId: board.projectId,
+              boardId: boardId,
+              cardId: card.id,
+              type: 'card_created',
+              action: `created card "${card.title}" in ${column?.title || 'column'}`,
+              user: getCurrentUser(),
+              metadata: {
+                cardTitle: card.title,
+                columnTitle: column?.title,
+                columnId: columnId
+              }
+            }).catch(console.error);
           }
         }, 0);
       },
 
       deleteCard: (boardId, cardId) => {
+        // Save the card title BEFORE deletion
+        const state = get();
+        const board = state.boards[boardId];
+        const deletedCard = board?.cards[cardId];
+        const deletedCardTitle = deletedCard?.title || 'Untitled';
+        
         set((state) => {
           const board = state.boards[boardId];
           if (!board) return state;
@@ -217,6 +337,19 @@ export const useKanbanStore = create<KanbanState>()(
           const board = useKanbanStore.getState().boards[boardId];
           if (board) {
             api.updateKanbanBoard(boardId, board as any).catch(console.error);
+            
+            // Log activity for card deletion
+            api.createActivity({
+              projectId: board.projectId,
+              boardId: boardId,
+              cardId: cardId,
+              type: 'card_deleted',
+              action: `deleted card "${deletedCardTitle}"`,
+              user: getCurrentUser(),
+              metadata: {
+                cardTitle: deletedCardTitle
+              }
+            }).catch(console.error);
           }
         }, 0);
       },

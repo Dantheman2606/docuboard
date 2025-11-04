@@ -21,6 +21,8 @@ import { KanbanBoardsList } from "./KanbanBoardsList";
 import { LogoutButton } from "./LogoutButton";
 import { AddBoardModal } from "./modals/AddBoardModal";
 import { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { ActivityButton } from "./ActivityButton";
 
 const Sidebar = () => {
   useSyncProjectId();
@@ -33,6 +35,7 @@ const Sidebar = () => {
   const [isAddBoardModalOpen, setIsAddBoardModalOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteBoardId, setDeleteBoardId] = useState<string | null>(null);
+  const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
   const { deleteDocument } = useDocumentStore();
   const queryClient = useQueryClient();
 
@@ -172,7 +175,20 @@ const Sidebar = () => {
         )}
       </ScrollArea>
 
+      <div className="px-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+        <ActivityButton 
+          isSidebarOpen={isSidebarOpen}
+          onClick={() => setIsActivityFeedOpen(true)}
+        />
+      </div>
+
       <LogoutButton isSidebarOpen={isSidebarOpen} />
+
+      {/* Activity Feed */}
+      <ActivityFeed
+        isOpen={isActivityFeedOpen}
+        onClose={() => setIsActivityFeedOpen(false)}
+      />
 
       {/* Add Doc Modal */}
       {currentProjectId && (

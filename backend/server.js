@@ -20,6 +20,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/kanban', require('./routes/kanban'));
+app.use('/api/activity', require('./routes/activity'));
 
 // Health check
 app.get('/api/health', (req, res) => {
