@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Calendar, User, Trash2 } from "lucide-react";
 import { InlineEditor } from "./InlineEditor";
 import { useKanbanStore } from "@/stores/kanbanStore";
-import { useRouter } from "next/router";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import { Button } from "@/components/ui/button";
 interface KanbanCardProps {
   card: CardType;
   index: number;
+  boardId: string;
 }
 
 const labelColors: Record<string, string> = {
@@ -33,9 +33,7 @@ const labelColors: Record<string, string> = {
   design: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
 };
 
-export function KanbanCard({ card, index }: KanbanCardProps) {
-  const router = useRouter();
-  const { id: projectId } = router.query;
+export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
   const { updateCard, deleteCard } = useKanbanStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -43,18 +41,18 @@ export function KanbanCard({ card, index }: KanbanCardProps) {
 
   const handleTitleUpdate = (newTitle: string) => {
     if (newTitle.trim() && newTitle !== card.title) {
-      updateCard(projectId as string, card.id, { title: newTitle.trim() });
+      updateCard(boardId, card.id, { title: newTitle.trim() });
     }
   };
 
   const handleDescUpdate = (newDesc: string) => {
     if (newDesc.trim() !== card.description) {
-      updateCard(projectId as string, card.id, { description: newDesc.trim() });
+      updateCard(boardId, card.id, { description: newDesc.trim() });
     }
   };
 
   const handleDelete = () => {
-    deleteCard(projectId as string, card.id);
+    deleteCard(boardId, card.id);
     setIsDeleteDialogOpen(false);
   };
 

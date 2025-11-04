@@ -73,7 +73,7 @@ export function KanbanColumn({ column, cards, boardId }: KanbanColumnProps) {
                 </div>
               ) : (
                 cards.map((card, index) => (
-                  <KanbanCard key={card.id} card={card} index={index} />
+                  <KanbanCard key={card.id} card={card} index={index} boardId={boardId} />
                 ))
               )}
               {provided.placeholder}
