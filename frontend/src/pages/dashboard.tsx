@@ -76,10 +76,15 @@ export default function DashboardPage() {
     setError("");
 
     try {
+      // Get current user from localStorage
+      const user = localStorage.getItem("user");
+      const userId = user ? JSON.parse(user).id : null;
+
       const created = await api.createProject({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         color: newProject.color,
+        userId: userId,
       });
 
       // Invalidate projects query to refetch

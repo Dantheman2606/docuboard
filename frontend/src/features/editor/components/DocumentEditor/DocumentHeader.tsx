@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Save, Clock, ChevronUp, ChevronDown, Users } from "lucide-react";
 import { VersionHistoryDropdown } from "./VersionHistoryDropdown";
 import type { DocumentVersion } from "@/lib/api";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface CollaboratorInfo {
   userId: string;
@@ -65,6 +66,10 @@ export function DocumentHeader({
     }
   }, [showCollaborators]);
 
+  const { can } = usePermissions();
+  const canEdit = can('edit');
+  const canRollback = can('rollback_versions');
+
   return (
     <div className="px-8 pt-8 pb-4 flex items-start justify-between gap-4">
       {/* Left: Document Title */}
@@ -74,7 +79,8 @@ export function DocumentHeader({
         onChange={(e) => onTitleChange(e.target.value)}
         onBlur={onTitleBlur}
         placeholder="Untitled Document"
-        className="flex-1 text-4xl font-bold bg-transparent border-none focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-tight py-1"
+        disabled={!canEdit}
+        className="flex-1 text-4xl font-bold bg-transparent border-none focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-tight py-1 disabled:opacity-70 disabled:cursor-not-allowed"
       />
 
       {/* Right: Version Controls and Collaborators */}
@@ -138,16 +144,18 @@ export function DocumentHeader({
           </div>
         )}
 
-        <Button
-          onClick={onSaveVersion}
-          disabled={isSaving || !isOnline}
-          size="sm"
-          className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white"
-          title="Save current version"
-        >
-          <Save className="w-4 h-4" />
-          {isSaving ? 'Saving...' : 'Save Version'}
-        </Button>
+        {canEdit && (
+          <Button
+            onClick={onSaveVersion}
+            disabled={isSaving || !isOnline}
+            size="sm"
+            className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white"
+            title="Save current version"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'Saving...' : 'Save Version'}
+          </Button>
+        )}
         
         <div className="relative">
           <Button
@@ -178,6 +186,7 @@ export function DocumentHeader({
               error={error}
               onViewDiff={onViewDiff}
               onRestore={onRestore}
+              canRollback={canRollback}
             />
           )}
         </div>

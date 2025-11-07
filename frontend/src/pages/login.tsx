@@ -4,7 +4,7 @@ import Head from "next/head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api";
+import { useAuth } from "@/features/auth";
 
 const demoUsers = [
   { username: "john_owner", password: "password123", name: "John Doe", role: "Owner" },
@@ -15,6 +15,7 @@ const demoUsers = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, signup } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +45,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const userData = await api.login(username, password);
-      localStorage.setItem("user", JSON.stringify(userData));
+      await login(username, password);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -65,13 +65,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const userData = await api.signup(
+      await signup(
         signupData.username,
         signupData.password,
         signupData.name,
         signupData.role
       );
-      localStorage.setItem("user", JSON.stringify(userData));
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Signup failed");

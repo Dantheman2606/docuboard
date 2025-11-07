@@ -150,6 +150,13 @@ export default function DocPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, projectId, isOnline]);
 
+  // Handle access denied error
+  useEffect(() => {
+    if (projectError) {
+      router.push('/dashboard');
+    }
+  }, [projectError, router]);
+
   if (projectLoading || isLoadingDoc) {
     return (
       <Layout>
@@ -160,7 +167,23 @@ export default function DocPage() {
     );
   }
 
-  if (!project && !projectError) {
+  if (projectError) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+          <div className="text-6xl">🔒</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            You don't have permission to view this project.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!project) {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center h-screen">

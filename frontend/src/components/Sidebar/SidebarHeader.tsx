@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RoleIndicator } from "@/features/auth";
 
 interface SidebarHeaderProps {
   projectName?: string;
@@ -11,19 +12,26 @@ interface SidebarHeaderProps {
 
 export function SidebarHeader({ projectName, isSidebarOpen, onToggle }: SidebarHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b">
-      <h2 className={cn("font-semibold text-lg truncate", !isSidebarOpen && "hidden")}>
-        {projectName || "Untitled Project"}
-      </h2>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggle}
-        className="text-muted-foreground"
-        aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-      >
-        {isSidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-      </Button>
+    <div className="border-b">
+      <div className="flex items-center justify-between px-4 py-3">
+        <h2 className={cn("font-semibold text-lg truncate", !isSidebarOpen && "hidden")}>
+          {projectName || "Untitled Project"}
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggle}
+          className="text-muted-foreground"
+          aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isSidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+        </Button>
+      </div>
+      {isSidebarOpen && (
+        <div className="px-4 pb-3">
+          <RoleIndicator size="sm" />
+        </div>
+      )}
     </div>
   );
 }

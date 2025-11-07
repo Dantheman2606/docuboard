@@ -1,19 +1,18 @@
 // components/Sidebar/LogoutButton.tsx
-import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/features/auth";
 
 interface LogoutButtonProps {
   isSidebarOpen: boolean;
 }
 
 export function LogoutButton({ isSidebarOpen }: LogoutButtonProps) {
-  const router = useRouter();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/login");
+    logout();
   };
 
   return (

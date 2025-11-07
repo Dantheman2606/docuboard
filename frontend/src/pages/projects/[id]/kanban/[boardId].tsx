@@ -15,7 +15,7 @@ export default function KanbanBoardPage() {
   const kanbanBoardId = typeof boardId === "string" ? boardId : "";
   
   const { setCurrentProject } = useUIStore();
-  const { data: project, isLoading: projectLoading } = useProject(projectId);
+  const { data: project, isLoading: projectLoading, isError: projectError } = useProject(projectId);
   const [boardName, setBoardName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
 
@@ -36,6 +36,13 @@ export default function KanbanBoardPage() {
       setBoardName(board.name);
     }
   }, [board?.name]);
+
+  // Handle access denied error
+  useEffect(() => {
+    if (projectError) {
+      router.push('/dashboard');
+    }
+  }, [projectError, router]);
 
   const handleNameChange = (newName: string) => {
     setBoardName(newName);
@@ -68,6 +75,27 @@ export default function KanbanBoardPage() {
         <Layout>
           <div className="flex items-center justify-center h-screen">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </Layout>
+      </>
+    );
+  }
+
+  if (projectError) {
+    return (
+      <>
+        <Head>
+          <title>Access Denied - Docuboard</title>
+        </Head>
+        <Layout>
+          <div className="flex flex-col items-center justify-center h-screen gap-4">
+            <div className="text-6xl">🔒</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Access Denied
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              You don't have permission to view this project.
+            </p>
           </div>
         </Layout>
       </>

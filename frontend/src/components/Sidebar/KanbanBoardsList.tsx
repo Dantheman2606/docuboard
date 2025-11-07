@@ -2,6 +2,7 @@
 import { useRouter } from "next/router";
 import { LayoutGrid, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface KanbanBoard {
   id: string;
@@ -26,6 +27,9 @@ export function KanbanBoardsList({
   onDeleteBoard,
 }: KanbanBoardsListProps) {
   const router = useRouter();
+  const { can } = usePermissions();
+  const canCreate = can('create');
+  const canDelete = can('delete');
 
   const handleNavigate = (boardId: string) => {
     router.push(`/projects/${currentProjectId}/kanban/${boardId}`);
@@ -34,19 +38,21 @@ export function KanbanBoardsList({
   return (
     <div className="space-y-1">
       {/* Add New Board Button */}
-      <button
-        onClick={onAddBoard}
-        className={cn(
-          "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
-          !isSidebarOpen && "justify-center"
-        )}
-        aria-label="Create new Kanban board"
-      >
-        <Plus size={16} className="text-primary" />
-        {isSidebarOpen && (
-          <span className="text-primary font-medium">New Board</span>
-        )}
-      </button>
+      {canCreate && (
+        <button
+          onClick={onAddBoard}
+          className={cn(
+            "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
+            !isSidebarOpen && "justify-center"
+          )}
+          aria-label="Create new Kanban board"
+        >
+          <Plus size={16} className="text-primary" />
+          {isSidebarOpen && (
+            <span className="text-primary font-medium">New Board</span>
+          )}
+        </button>
+      )}
 
       {/* Kanban Boards List */}
       {boards?.map((board) => (
@@ -67,7 +73,7 @@ export function KanbanBoardsList({
             <LayoutGrid size={16} className="text-muted-foreground flex-shrink-0" />
             {isSidebarOpen && <span className="truncate">{board.name}</span>}
           </button>
-          {isSidebarOpen && (
+          {isSidebarOpen && canDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

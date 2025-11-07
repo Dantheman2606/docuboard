@@ -2,6 +2,7 @@
 "use client";
 
 import { Editor } from "@tiptap/react";
+import { Eye } from "lucide-react";
 import {
   TextFormatting,
   Headings,
@@ -11,6 +12,7 @@ import {
   ColorPicker,
   FontOptions,
 } from "./toolbarComponents";
+import { usePermissions } from "@/features/auth";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -18,8 +20,22 @@ interface EditorToolbarProps {
 
 // Main Toolbar Component
 export function EditorToolbar({ editor }: EditorToolbarProps) {
+  const { can } = usePermissions();
+  const canEdit = can('edit');
+
   if (!editor) {
     return null;
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+        <div className="flex items-center gap-2 p-3 text-sm text-gray-500">
+          <Eye className="h-4 w-4" />
+          <span>You have view-only access to this document</span>
+        </div>
+      </div>
+    );
   }
 
   return (

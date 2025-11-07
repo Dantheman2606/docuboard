@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface KanbanCardProps {
   card: CardType;
@@ -37,6 +38,9 @@ const labelColors: Record<string, string> = {
 };
 
 export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
+  const { can } = usePermissions();
+  const canEdit = can('edit');
+  const canDelete = can('delete');
   const { updateCard, updateCardWithActivity, deleteCard } = useKanbanStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -144,14 +148,14 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
                 <div
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isEditingTitle) {
+                    if (canEdit && !isEditingTitle) {
                       setOriginalTitle(card.title);
                       setIsEditingTitle(true);
                     }
                   }}
-                  className={`flex-1 ${!isEditingTitle && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
+                  className={`flex-1 ${canEdit && !isEditingTitle && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
                 >
-                  {isEditingTitle ? (
+                  {isEditingTitle && canEdit ? (
                     <InlineEditor
                       content={card.title}
                       placeholder="Card title..."
@@ -165,30 +169,32 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
                     </h3>
                   )}
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                  aria-label="Delete card"
-                >
-                  <Trash2 size={14} />
-                </button>
+                {canDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    aria-label="Delete card"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
 
               {/* Editable Description */}
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!isEditingDesc) {
+                  if (canEdit && !isEditingDesc) {
                     setOriginalDesc(card.description);
                     setIsEditingDesc(true);
                   }
                 }}
-                className={`${!isEditingDesc && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
+                className={`${canEdit && !isEditingDesc && 'cursor-text hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded px-1 -mx-1'}`}
               >
-                {isEditingDesc ? (
+                {isEditingDesc && canEdit ? (
                   <InlineEditor
                     content={card.description || ''}
                     placeholder="Add description..."

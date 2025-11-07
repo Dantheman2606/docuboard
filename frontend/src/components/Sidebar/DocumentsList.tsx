@@ -2,6 +2,7 @@
 import { useRouter } from "next/router";
 import { FileText, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface Document {
   id: string;
@@ -26,6 +27,9 @@ export function DocumentsList({
   onDeleteDocument,
 }: DocumentsListProps) {
   const router = useRouter();
+  const { can } = usePermissions();
+  const canCreate = can('create');
+  const canDelete = can('delete');
 
   const handleNavigate = (docId: string) => {
     router.push(`/projects/${currentProjectId}/docs/${docId}`);
@@ -34,19 +38,21 @@ export function DocumentsList({
   return (
     <div className="space-y-1">
       {/* Add New Doc Button */}
-      <button
-        onClick={onAddDocument}
-        className={cn(
-          "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
-          !isSidebarOpen && "justify-center"
-        )}
-        aria-label="Create new document"
-      >
-        <Plus size={16} className="text-primary" />
-        {isSidebarOpen && (
-          <span className="text-primary font-medium">New Doc</span>
-        )}
-      </button>
+      {canCreate && (
+        <button
+          onClick={onAddDocument}
+          className={cn(
+            "w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-primary/10 transition-colors border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 mb-3",
+            !isSidebarOpen && "justify-center"
+          )}
+          aria-label="Create new document"
+        >
+          <Plus size={16} className="text-primary" />
+          {isSidebarOpen && (
+            <span className="text-primary font-medium">New Doc</span>
+          )}
+        </button>
+      )}
 
       {/* Documents from backend */}
       {documents?.map((doc) => (
@@ -67,7 +73,7 @@ export function DocumentsList({
             <FileText size={16} className="text-muted-foreground flex-shrink-0" />
             {isSidebarOpen && <span className="truncate">{doc.title}</span>}
           </button>
-          {isSidebarOpen && (
+          {isSidebarOpen && canDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

@@ -4,6 +4,7 @@ import Head from "next/head";
 import Layout from "@/components/Layout";
 import { useUIStore } from "@/stores/uiStore";
 import { useProject } from "@/hooks/useProject";
+import toast from "react-hot-toast";
 
 export default function ProjectPage() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function ProjectPage() {
   const projectId = typeof id === "string" ? id : "";
   
   const { setCurrentProject } = useUIStore();
-  const { data: project, isLoading } = useProject(projectId);
+  const { data: project, isLoading, isError, error } = useProject(projectId);
 
   useEffect(() => {
     if (projectId) {
@@ -30,6 +31,14 @@ export default function ProjectPage() {
     }
   }, [project, projectId, router, isLoading]);
 
+  // Handle access denied error
+  useEffect(() => {
+    if (isError) {
+      toast.error("Access denied. You are not a member of this project.");
+      router.push('/dashboard');
+    }
+  }, [isError, router]);
+
   if (isLoading) {
     return (
       <>
@@ -39,6 +48,23 @@ export default function ProjectPage() {
         <Layout>
           <div className="flex items-center justify-center h-screen">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </Layout>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <Head>
+          <title>Access Denied - Docuboard</title>
+        </Head>
+        <Layout>
+          <div className="flex flex-col items-center justify-center h-screen gap-4">
+            <div className="text-6xl">🔒</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Access Denied</h1>
+            <p className="text-gray-600 dark:text-gray-400">You don't have permission to view this project.</p>
           </div>
         </Layout>
       </>

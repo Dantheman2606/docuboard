@@ -6,6 +6,7 @@ import { KanbanCard } from "./KanbanCard";
 import { AddCardModal } from "./AddCardModal";
 import { Card } from "@/components/ui/card";
 import { Plus } from "lucide-react";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface KanbanColumnProps {
   column: Column;
@@ -32,6 +33,8 @@ const columnColors: Record<string, { bg: string; header: string; badge: string }
 };
 
 export function KanbanColumn({ column, cards, boardId }: KanbanColumnProps) {
+  const { can } = usePermissions();
+  const canCreate = can('create');
   const colorScheme = columnColors[column.id] || columnColors.todo;
   const [isAddCardOpen, setIsAddCardOpen] = useState(false);
 
@@ -82,15 +85,17 @@ export function KanbanColumn({ column, cards, boardId }: KanbanColumnProps) {
         </Droppable>
 
         {/* Add Card Button */}
-        <div className="p-3 flex-shrink-0">
-          <button
-            onClick={() => setIsAddCardOpen(true)}
-            className="w-full py-2 px-3 flex items-center justify-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
-          >
-            <Plus size={16} />
-            Add Card
-          </button>
-        </div>
+        {canCreate && (
+          <div className="p-3 flex-shrink-0">
+            <button
+              onClick={() => setIsAddCardOpen(true)}
+              className="w-full py-2 px-3 flex items-center justify-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+            >
+              <Plus size={16} />
+              Add Card
+            </button>
+          </div>
+        )}
       </Card>
 
       {/* Add Card Modal */}

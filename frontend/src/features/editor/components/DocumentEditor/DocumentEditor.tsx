@@ -24,6 +24,7 @@ import { RemoteCursor } from "../RemoteCursor";
 import { useDocumentStore } from "@/stores/documentStore";
 import { api, type DocumentVersion } from "@/lib/api";
 import toast from "react-hot-toast";
+import { usePermissions } from "@/features/auth/hooks";
 
 interface CollaboratorInfo {
   userId: string;
@@ -51,6 +52,8 @@ interface DocumentEditorProps {
 }
 
 export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
+  const { can } = usePermissions();
+  const canEdit = can('edit');
   const { documents, updateDocumentContent, updateDocumentTitle, isOnline, setDocument } =
     useDocumentStore();
   const queryClient = useQueryClient();
@@ -111,6 +114,7 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       }),
     ],
     content: "",
+    editable: true, // Will be updated based on permissions
     editorProps: {
       attributes: {
         class:
@@ -425,6 +429,13 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       setTitle(document.title);
     }
   }, [document?.title]);
+
+  // Update editor editable state based on permissions
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(canEdit);
+    }
+  }, [editor, canEdit]);
 
   // Fetch versions when document changes or when expanded
   useEffect(() => {

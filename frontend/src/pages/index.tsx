@@ -93,7 +93,7 @@ export default function LandingPage() {
                 className="bg-black hover:bg-gray-800 text-white"
                 onClick={() => router.push('/login')}
               >
-                Get Started Free
+                Get Started
               </Button>
             </div>
 
@@ -162,7 +162,7 @@ export default function LandingPage() {
               className="bg-black hover:bg-gray-800 text-white text-lg px-8 py-6 transition-all duration-300"
               onClick={() => router.push('/login')}
             >
-              Get Started Free
+              Get Started
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button 
@@ -333,9 +333,9 @@ export default function LandingPage() {
 
           {/* Bottom Bar */}
           <div className="border-t-2 border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-500">
+            {/* <p className="text-sm text-gray-500">
               © 2025 Docuboard. Made with ❤️ for creators everywhere.
-            </p>
+            </p> */}
             {/* <div className="flex gap-6">
               <a href="#" className="hover:text-black transition-colors">
                 <Twitter className="w-5 h-5" />

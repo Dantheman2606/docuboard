@@ -53,6 +53,14 @@ const fetchWithOfflineDetection = async (url: string, options?: RequestInit): Pr
   }
 };
 
+export interface ProjectMember {
+  userId: string;
+  name: string;
+  username: string;
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  addedAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -62,6 +70,8 @@ export interface Project {
     id: string;
     title: string;
   }[];
+  members?: ProjectMember[];
+  userRole?: 'owner' | 'admin' | 'editor' | 'viewer';
 }
 
 export interface DocumentVersion {
@@ -147,19 +157,21 @@ export interface Activity {
 
 export const api = {
   // Projects
-  getProjects: async (): Promise<Project[]> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects`);
+  getProjects: async (userId?: string): Promise<Project[]> => {
+    const url = userId ? `${API_BASE_URL}/projects?userId=${userId}` : `${API_BASE_URL}/projects`;
+    const response = await fetchWithOfflineDetection(url);
     if (!response.ok) throw new Error('Failed to fetch projects');
     return response.json();
   },
 
-  getProject: async (id: string): Promise<Project> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${id}`);
+  getProject: async (id: string, userId?: string): Promise<Project> => {
+    const url = userId ? `${API_BASE_URL}/projects/${id}?userId=${userId}` : `${API_BASE_URL}/projects/${id}`;
+    const response = await fetchWithOfflineDetection(url);
     if (!response.ok) throw new Error('Project not found');
     return response.json();
   },
 
-  createProject: async (data: Partial<Project>): Promise<Project> => {
+  createProject: async (data: Partial<Project> & { userId?: string }): Promise<Project> => {
     const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -414,6 +426,35 @@ export const api = {
     const params = query ? `?query=${encodeURIComponent(query)}` : '';
     const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/users/search${params}`);
     if (!response.ok) throw new Error('Failed to search users');
+    return response.json();
+  },
+
+  // Project Members
+  addProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!response.ok) throw new Error('Failed to add project member');
+    return response.json();
+  },
+
+  updateProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+    if (!response.ok) throw new Error('Failed to update project member');
+    return response.json();
+  },
+
+  removeProjectMember: async (projectId: string, userId: string): Promise<{ members: ProjectMember[] }> => {
+    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Failed to remove project member');
     return response.json();
   },
 };

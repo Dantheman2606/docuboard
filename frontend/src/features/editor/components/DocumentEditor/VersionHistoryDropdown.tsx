@@ -11,6 +11,7 @@ interface VersionHistoryDropdownProps {
   error: string | null;
   onViewDiff: (version: DocumentVersion, previousVersion?: DocumentVersion) => void;
   onRestore: (versionNumber: number) => void;
+  canRollback?: boolean;
 }
 
 export function VersionHistoryDropdown({
@@ -19,6 +20,7 @@ export function VersionHistoryDropdown({
   error,
   onViewDiff,
   onRestore,
+  canRollback = true,
 }: VersionHistoryDropdownProps) {
   // Helper function to format relative time
   const formatRelativeTime = (timestamp: string) => {
@@ -87,12 +89,24 @@ export function VersionHistoryDropdown({
                   <Eye className="w-3 h-3 mr-1" />
                   View
                 </Button>
-                {index !== 0 && (
+                {index !== 0 && canRollback && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onRestore(version.versionNumber)}
                     className="flex-1 text-xs h-7"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    Restore
+                  </Button>
+                )}
+                {index !== 0 && !canRollback && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    className="flex-1 text-xs h-7 opacity-50 cursor-not-allowed"
+                    title="You need admin or owner role to restore versions"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" />
                     Restore
