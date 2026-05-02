@@ -32,16 +32,10 @@ interface CollaboratorInfo {
   color: string;
 }
 
-interface CursorPosition {
-  x: number;
-  y: number;
-}
-
 interface RemoteCursorInfo {
   userId: string;
   userName: string;
   color: string;
-  position: CursorPosition | null;
   docPosition: number; // Track document position (character offset)
   lastUpdate: number; // Timestamp of last update
 }
@@ -273,7 +267,6 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
                 userId: data.userId,
                 userName: data.userName,
                 color: data.color,
-                position: null, // Will be calculated from docPosition
                 docPosition: data.docPosition,
                 lastUpdate: Date.now(), // Track when user was last active
               });
@@ -329,70 +322,6 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       }
     };
   }, [documentId, editor]);
-
-  // Convert document positions to screen coordinates for remote cursors
-  useEffect(() => {
-    if (!editor) return;
-
-    // Calculate screen positions from document positions
-    // This runs when cursor data changes OR when we need to recalculate positions
-    const recalculatePositions = () => {
-      setRemoteCursors((prev) => {
-        if (prev.size === 0) return prev;
-
-        const next = new Map();
-        const now = Date.now();
-
-        for (const [userId, cursorInfo] of prev) {
-          // Remove idle cursors (no updates for 3+ seconds)
-          // Only show cursors for actively typing users
-          if (now - cursorInfo.lastUpdate > 3000) {
-            continue; // Skip - user is idle
-          }
-
-          try {
-            const maxPos = editor.state.doc.content.size;
-            // Clamp to valid range - if cursor is beyond document, show at end
-            const safePos = Math.max(0, Math.min(cursorInfo.docPosition, maxPos));
-            
-            // Calculate screen coordinates
-            const coords = editor.view.coordsAtPos(safePos);
-            
-            next.set(userId, {
-              ...cursorInfo,
-              position: {
-                x: coords.left,
-                y: coords.top,
-              },
-            });
-          } catch (error) {
-            // Invalid position, skip this cursor
-          }
-        }
-
-        return next;
-      });
-    };
-
-    // Recalculate immediately when cursor data arrives
-    recalculatePositions();
-
-    // Recalculate on scroll/resize since screen coords change
-    const handleScroll = () => requestAnimationFrame(recalculatePositions);
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleScroll);
-
-    // Periodically clean up idle cursors (every 1 second)
-    const cleanupInterval = setInterval(() => {
-      recalculatePositions(); // This will remove cursors older than 3 seconds
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleScroll);
-      clearInterval(cleanupInterval);
-    };
-  }, [editor, remoteCursors]); // Run when new cursor data arrives
 
   // Update editor content when document changes
   useEffect(() => {
@@ -619,14 +548,15 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
         <EditorContent editor={editor} />
         
         {/* Remote Cursors - only shown for actively typing users */}
-        {Array.from(remoteCursors.values()).map((cursor) => (
+        {editor && Array.from(remoteCursors.values()).map((cursor) => (
           <RemoteCursor
             key={cursor.userId}
             userId={cursor.userId}
             userName={cursor.userName}
             color={cursor.color}
-            position={cursor.position}
+            docPosition={cursor.docPosition}
             lastUpdate={cursor.lastUpdate}
+            editor={editor}
           />
         ))}
       </div>

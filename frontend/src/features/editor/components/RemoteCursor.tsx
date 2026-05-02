@@ -2,18 +2,57 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Editor } from "@tiptap/react";
 
 interface RemoteCursorProps {
   userId: string;
   userName: string;
   color: string;
-  position: { x: number; y: number } | null;
+  docPosition: number;
   lastUpdate?: number; // Timestamp of last update
+  editor: Editor;
 }
 
-export function RemoteCursor({ userId, userName, color, position, lastUpdate }: RemoteCursorProps) {
+export function RemoteCursor({ userId, userName, color, docPosition, lastUpdate, editor }: RemoteCursorProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [opacity, setOpacity] = useState(1);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Calculate position from docPosition whenever it changes
+  useEffect(() => {
+    if (!editor) return;
+
+    try {
+      const maxPos = editor.state.doc.content.size;
+      const safePos = Math.max(0, Math.min(docPosition, maxPos));
+      const coords = editor.view.coordsAtPos(safePos);
+      
+      setPosition({
+        x: coords.left,
+        y: coords.top,
+      });
+    } catch (error) {
+      // Invalid position
+      setPosition(null);
+    }
+  }, [docPosition, editor]);
+
+  // Hide cursor if inactive for more than 3 seconds
+  useEffect(() => {
+    if (!lastUpdate) return;
+
+    const checkVisibility = () => {
+      const timeSinceUpdate = Date.now() - lastUpdate;
+      if (timeSinceUpdate > 3000) {
+        setPosition(null); // Hide cursor
+      }
+    };
+
+    checkVisibility();
+    const interval = setInterval(checkVisibility, 1000);
+
+    return () => clearInterval(interval);
+  }, [lastUpdate]);
 
   useEffect(() => {
     // Blink cursor
