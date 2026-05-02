@@ -12,7 +12,11 @@ export const useProject = (id: string) => {
       return project;
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchOnMount: "always",
+    refetchInterval: 1000 * 10,
     retry: 1,
     retryDelay: 500,
   });

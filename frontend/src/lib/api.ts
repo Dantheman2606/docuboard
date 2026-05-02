@@ -79,13 +79,22 @@ export interface ProjectMember {
   addedAt: string;
 }
 
+export interface ProjectJoinRequest {
+  userId: string;
+  name?: string;
+  username?: string;
+  requestedAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   description: string;
   color?: string;
+  projectCode?: string;
   docs: { id: string; title: string }[];
   members?: ProjectMember[];
+  joinRequests?: ProjectJoinRequest[];
   userRole?: 'owner' | 'admin' | 'editor' | 'viewer';
 }
 
@@ -254,6 +263,35 @@ export const api = {
   removeProjectMember: async (projectId: string, userId: string): Promise<{ members: ProjectMember[] }> => {
     const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
     return parseResponse<{ members: ProjectMember[] }>(res);
+  },
+
+  // ── Project Join Requests ─────────────────────────────────────────────────
+  requestProjectJoin: async (code: string): Promise<Project> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/join-request`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+    return parseResponse<Project>(res);
+  },
+
+  getProjectJoinRequests: async (projectId: string): Promise<ProjectJoinRequest[]> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/requests`);
+    const data = await parseResponse<{ requests: ProjectJoinRequest[] }>(res);
+    return data.requests;
+  },
+
+  approveProjectJoinRequest: async (projectId: string, userId: string): Promise<Project> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/requests/${userId}/approve`, {
+      method: 'POST',
+    });
+    return parseResponse<Project>(res);
+  },
+
+  rejectProjectJoinRequest: async (projectId: string, userId: string): Promise<Project> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/requests/${userId}`, {
+      method: 'DELETE',
+    });
+    return parseResponse<Project>(res);
   },
 
   // ── Documents ─────────────────────────────────────────────────────────────

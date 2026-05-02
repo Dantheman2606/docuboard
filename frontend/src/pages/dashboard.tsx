@@ -3,7 +3,7 @@ import Head from "next/head";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, LogOut, Edit2, Settings } from "lucide-react";
+import { PlusCircle, LogOut, Edit2, Settings, KeyRound } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuth } from "@/features/auth";
@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Project } from "@/lib/api";
+import toast from "react-hot-toast";
 
 const projectColors = [
   "#3B82F6", // blue
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({
     name: "",
@@ -51,6 +53,9 @@ export default function DashboardPage() {
     description: "",
     color: "",
   });
+  const [joinCode, setJoinCode] = useState("");
+  const [joinError, setJoinError] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState("");
@@ -122,6 +127,28 @@ export default function DashboardPage() {
     }
   };
 
+  const handleJoinProject = async () => {
+    const normalized = joinCode.trim();
+    if (!/^[0-9]{8}$/.test(normalized)) {
+      setJoinError("Enter a valid 8-digit code");
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError("");
+
+    try {
+      await api.requestProjectJoin(normalized);
+      toast.success("Permission has been requested");
+      setJoinCode("");
+      setIsJoinModalOpen(false);
+    } catch (err: any) {
+      setJoinError(err.message || "Failed to request access");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   const openEditModal = (project: Project, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     setEditingProject(project);
@@ -187,6 +214,21 @@ export default function DashboardPage() {
               New Project
             </Button>
           </div>
+        </div>
+
+        <div className="mb-8 border-2 border-gray-200 p-6 bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-black">Join a project</h2>
+            <p className="text-gray-600">Have a project code? Request access here.</p>
+          </div>
+          <Button
+            onClick={() => setIsJoinModalOpen(true)}
+            variant="outline"
+            className="flex items-center gap-2 border-2"
+          >
+            <KeyRound size={18} />
+            Enter code
+          </Button>
         </div>
 
         {projects.length === 0 ? (
@@ -417,6 +459,60 @@ export default function DashboardPage() {
                 className="bg-black hover:bg-gray-800 text-white"
               >
                 {isUpdating ? "Updating..." : "Update Project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Join Project Modal */}
+        <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}>
+          <DialogContent className="sm:max-w-[420px] border-2 border-black">
+            <DialogHeader>
+              <DialogTitle className="text-black">Join a Project</DialogTitle>
+              <DialogDescription className="text-gray-600">
+                Enter the 8-digit project code to request access.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {joinError && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border-2 border-red-600">
+                  {joinError}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-black">Project Code</label>
+                <Input
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  placeholder="8-digit code"
+                  className="h-11 border-2 border-gray-300 focus:border-black focus:ring-0"
+                  disabled={isJoining}
+                  maxLength={8}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsJoinModalOpen(false);
+                  setJoinCode("");
+                  setJoinError("");
+                }}
+                disabled={isJoining}
+                className="border-2 border-gray-300 hover:bg-gray-100"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleJoinProject}
+                disabled={isJoining}
+                className="bg-black hover:bg-gray-800 text-white"
+              >
+                {isJoining ? "Requesting..." : "Request Access"}
               </Button>
             </DialogFooter>
           </DialogContent>

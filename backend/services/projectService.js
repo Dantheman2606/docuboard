@@ -12,12 +12,14 @@ const formatProject = async (project, userId) => {
   const userMember = userId
     ? project.members.find((m) => m.userId._id.toString() === userId || m.userId.toString() === userId)
     : null;
+  const userRole = userMember ? userMember.role : null;
 
   return {
     id: project._id.toString(),
     name: project.name,
     description: project.description,
     color: project.color,
+    projectCode: project.projectCode,
     docs: docs.map((d) => ({ id: d._id.toString(), title: d.title })),
     members: project.members.map((m) => ({
       userId: m.userId._id ? m.userId._id.toString() : m.userId.toString(),
@@ -26,7 +28,15 @@ const formatProject = async (project, userId) => {
       role: m.role,
       addedAt: m.addedAt,
     })),
-    userRole: userMember ? userMember.role : null,
+    joinRequests: userRole === 'owner'
+      ? project.joinRequests.map((r) => ({
+          userId: r.userId._id ? r.userId._id.toString() : r.userId.toString(),
+          name: r.userId.name || undefined,
+          username: r.userId.username || undefined,
+          requestedAt: r.requestedAt,
+        }))
+      : [],
+    userRole,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };
@@ -49,7 +59,9 @@ exports.getProjects = async (userId) => {
  * Get a single project by _id, verifying membership.
  */
 exports.getProjectById = async (projectId, userId) => {
-  const project = await Project.findById(projectId).populate('members.userId', 'name username');
+  const project = await Project.findById(projectId)
+    .populate('members.userId', 'name username')
+    .populate('joinRequests.userId', 'name username');
   if (!project) throw new AppError('Project not found.', 404);
 
   if (userId) {
@@ -64,13 +76,26 @@ exports.getProjectById = async (projectId, userId) => {
  * Create a new project with the creator as owner.
  * Also creates a default KanbanBoard and a Welcome Document.
  */
+const generateProjectCode = async () => {
+  const maxAttempts = 10;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const exists = await Project.exists({ projectCode: code });
+    if (!exists) return code;
+  }
+  throw new AppError('Failed to generate a unique project code.', 500);
+};
+
 exports.createProject = async ({ name, description, color }, creatorId) => {
+  const projectCode = await generateProjectCode();
   const project = new Project({
     name,
     description: description || '',
     color: color || '#3B82F6',
+    projectCode,
     createdBy: creatorId,
     members: creatorId ? [{ userId: creatorId, role: 'owner', addedAt: new Date() }] : [],
+    joinRequests: [],
   });
   await project.save();
 
@@ -97,7 +122,9 @@ exports.createProject = async ({ name, description, color }, creatorId) => {
   await defaultDoc.save();
 
   return formatProject(
-    await Project.findById(project._id).populate('members.userId', 'name username'),
+    await Project.findById(project._id)
+      .populate('members.userId', 'name username')
+      .populate('joinRequests.userId', 'name username'),
     creatorId
   );
 };
@@ -158,9 +185,95 @@ exports.updateMemberRole = async (projectId, memberId, role) => {
   const member = project.members.find((m) => m.userId.toString() === memberId);
   if (!member) throw new AppError('Member not found.', 404);
 
+  if (member.role === 'owner') {
+    throw new AppError('Owner role cannot be changed.', 400);
+  }
+
   member.role = role;
   await project.save();
   await project.populate('members.userId', 'name username');
+  return formatProject(project, null);
+};
+
+/**
+ * Request access to a project by code.
+ */
+exports.requestJoinByCode = async (projectCode, userId) => {
+  const project = await Project.findOne({ projectCode });
+  if (!project) throw new AppError('Project not found.', 404);
+
+  const isMember = project.members.some((m) => m.userId.toString() === userId);
+  if (isMember) throw new AppError('You are already a member of this project.', 409);
+
+  const alreadyRequested = project.joinRequests.some((r) => r.userId.toString() === userId);
+  if (alreadyRequested) throw new AppError('Join request already submitted.', 409);
+
+  const updateResult = await Project.updateOne(
+    { _id: project._id, 'joinRequests.userId': { $ne: userId } },
+    { $addToSet: { joinRequests: { userId, requestedAt: new Date() } } }
+  );
+
+  if (!updateResult.modifiedCount) {
+    throw new AppError('Join request already submitted.', 409);
+  }
+
+  const updated = await Project.findById(project._id)
+    .populate('members.userId', 'name username')
+    .populate('joinRequests.userId', 'name username');
+  return formatProject(updated, userId);
+};
+
+/**
+ * Get join requests for a project (owner only).
+ */
+exports.getJoinRequestsForProject = async (projectId) => {
+  const project = await Project.findById(projectId).populate('joinRequests.userId', 'name username');
+  if (!project) throw new AppError('Project not found.', 404);
+
+  return project.joinRequests.map((r) => ({
+    userId: r.userId._id ? r.userId._id.toString() : r.userId.toString(),
+    name: r.userId.name || undefined,
+    username: r.userId.username || undefined,
+    requestedAt: r.requestedAt,
+  }));
+};
+
+/**
+ * Approve a join request (owner only). Adds user as viewer and removes request.
+ */
+exports.approveJoinRequest = async (projectId, userId) => {
+  const project = await Project.findById(projectId);
+  if (!project) throw new AppError('Project not found.', 404);
+
+  const requestIndex = project.joinRequests.findIndex((r) => r.userId.toString() === userId);
+  if (requestIndex === -1) throw new AppError('Join request not found.', 404);
+
+  const isMember = project.members.some((m) => m.userId.toString() === userId);
+  if (!isMember) {
+    project.members.push({ userId, role: 'viewer', addedAt: new Date() });
+  }
+
+  project.joinRequests.splice(requestIndex, 1);
+  await project.save();
+  await project.populate('members.userId', 'name username');
+  await project.populate('joinRequests.userId', 'name username');
+  return formatProject(project, null);
+};
+
+/**
+ * Reject a join request (owner only).
+ */
+exports.rejectJoinRequest = async (projectId, userId) => {
+  const project = await Project.findById(projectId);
+  if (!project) throw new AppError('Project not found.', 404);
+
+  const requestIndex = project.joinRequests.findIndex((r) => r.userId.toString() === userId);
+  if (requestIndex === -1) throw new AppError('Join request not found.', 404);
+
+  project.joinRequests.splice(requestIndex, 1);
+  await project.save();
+  await project.populate('members.userId', 'name username');
+  await project.populate('joinRequests.userId', 'name username');
   return formatProject(project, null);
 };
 

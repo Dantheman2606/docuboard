@@ -20,6 +20,10 @@ const updateProjectSchema = Joi.object({
   color: Joi.string().trim(),
 });
 
+const joinRequestSchema = Joi.object({
+  code: Joi.string().trim().pattern(/^[0-9]{8}$/).required(),
+});
+
 const memberSchema = Joi.object({
   userId: Joi.string().required(),
   role: Joi.string().valid('owner', 'admin', 'editor', 'viewer').default('viewer'),
@@ -33,6 +37,16 @@ router.get('/', async (req, res, next) => {
   try {
     const projects = await projectService.getProjects(req.user.id);
     return success(res, projects);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/join-request
+router.post('/join-request', validate(joinRequestSchema), async (req, res, next) => {
+  try {
+    const project = await projectService.requestJoinByCode(req.body.code, req.user.id);
+    return success(res, project, 201);
   } catch (err) {
     next(err);
   }
@@ -90,7 +104,7 @@ router.post('/:id/members', requireProjectMember('admin'), validate(memberSchema
 });
 
 // PUT /api/projects/:id/members/:memberId  (admin+ required)
-router.put('/:id/members/:memberId', requireProjectMember('admin'), async (req, res, next) => {
+router.put('/:id/members/:memberId', requireProjectMember('owner'), async (req, res, next) => {
   try {
     const project = await projectService.updateMemberRole(req.params.id, req.params.memberId, req.body.role);
     return success(res, project);
@@ -103,6 +117,36 @@ router.put('/:id/members/:memberId', requireProjectMember('admin'), async (req, 
 router.delete('/:id/members/:memberId', requireProjectMember('admin'), async (req, res, next) => {
   try {
     const project = await projectService.removeMember(req.params.id, req.params.memberId);
+    return success(res, project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/:id/requests  (owner only)
+router.get('/:id/requests', requireProjectMember('owner'), async (req, res, next) => {
+  try {
+    const requests = await projectService.getJoinRequestsForProject(req.params.id);
+    return success(res, { requests });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/requests/:userId/approve  (owner only)
+router.post('/:id/requests/:userId/approve', requireProjectMember('owner'), async (req, res, next) => {
+  try {
+    const project = await projectService.approveJoinRequest(req.params.id, req.params.userId);
+    return success(res, project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/projects/:id/requests/:userId  (owner only)
+router.delete('/:id/requests/:userId', requireProjectMember('owner'), async (req, res, next) => {
+  try {
+    const project = await projectService.rejectJoinRequest(req.params.id, req.params.userId);
     return success(res, project);
   } catch (err) {
     next(err);

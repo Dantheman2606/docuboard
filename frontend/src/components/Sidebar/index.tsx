@@ -20,6 +20,7 @@ import { DocumentsList } from "./DocumentsList";
 import { KanbanBoardsList } from "./KanbanBoardsList";
 import { LogoutButton } from "./LogoutButton";
 import { SettingsButton } from "./SettingsButton";
+import { ProjectSettingsButton } from "./ProjectSettingsButton";
 import { AddBoardModal } from "./modals/AddBoardModal";
 import { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
 import { ActivityFeed } from "@/features/activity";
@@ -177,6 +178,12 @@ const Sidebar = () => {
       </ScrollArea>
 
       <div className="px-2 border-t border-gray-200 dark:border-gray-700 pt-2 space-y-2">
+        {project?.userRole === "owner" && currentProjectId && (
+          <ProjectSettingsButton
+            isSidebarOpen={isSidebarOpen}
+            projectId={currentProjectId}
+          />
+        )}
         <SettingsButton isSidebarOpen={isSidebarOpen} />
         <ActivityButton 
           isSidebarOpen={isSidebarOpen}

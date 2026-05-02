@@ -18,7 +18,11 @@ export function useProjects() {
     },
     // Only fetch when a user is authenticated
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchOnMount: "always",
+    refetchInterval: 1000 * 15,
     retry: 1,
     retryDelay: 500,
   });
