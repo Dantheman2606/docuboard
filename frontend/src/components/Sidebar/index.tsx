@@ -202,28 +202,29 @@ const Sidebar = () => {
             projectId={currentProjectId}
           />
         )}
-        {project?.userRole && project.userRole !== "owner" && (
-          <div className="px-2">
-            <button
-              type="button"
-              className={cn(
-                "w-full flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-3 py-2",
-                !isSidebarOpen && "justify-center px-2"
-              )}
-              onClick={() => setIsLeaveOpen(true)}
-            >
-              <span className="text-sm font-medium">
-                {isSidebarOpen ? "Leave Project" : "Leave"}
-              </span>
-            </button>
-          </div>
-        )}
         <SettingsButton isSidebarOpen={isSidebarOpen} />
         <ActivityButton 
           isSidebarOpen={isSidebarOpen}
           onClick={() => setIsActivityFeedOpen(true)}
         />
       </div>
+
+      {project?.userRole && project.userRole !== "owner" && (
+        <div className="px-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            className={cn(
+              "w-full flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-3 py-2",
+              !isSidebarOpen && "justify-center px-2"
+            )}
+            onClick={() => setIsLeaveOpen(true)}
+          >
+            <span className="text-sm font-medium">
+              {isSidebarOpen ? "Leave Project" : "Leave"}
+            </span>
+          </button>
+        </div>
+      )}
 
       <LogoutButton isSidebarOpen={isSidebarOpen} />
 

@@ -207,6 +207,24 @@ export default function ProjectSettingsPage() {
               </Card>
             </div>
 
+            <Card className="border-2 border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-lg text-red-700">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-medium text-black">Delete this project</div>
+                  <div className="text-sm text-red-700">This action cannot be undone.</div>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteOpen(true)}
+                >
+                  Delete Project
+                </Button>
+              </CardContent>
+            </Card>
+
             <div className="flex gap-2">
               <Button
                 variant={activeTab === "members" ? "default" : "outline"}
@@ -322,24 +340,6 @@ export default function ProjectSettingsPage() {
                 </CardContent>
               </Card>
             )}
-
-            <Card className="border-2 border-red-200 bg-red-50">
-              <CardHeader>
-                <CardTitle className="text-lg text-red-700">Danger Zone</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="font-medium text-black">Delete this project</div>
-                  <div className="text-sm text-red-700">This action cannot be undone.</div>
-                </div>
-                <Button
-                  variant="destructive"
-                  onClick={() => setIsDeleteOpen(true)}
-                >
-                  Delete Project
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </Layout>
