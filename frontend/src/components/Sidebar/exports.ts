@@ -6,6 +6,7 @@ export { SectionTabs } from "./SectionTabs";
 export { DocumentsList } from "./DocumentsList";
 export { KanbanBoardsList } from "./KanbanBoardsList";
 export { LogoutButton } from "./LogoutButton";
+export { SettingsButton } from "./SettingsButton";
 export { AddBoardModal } from "./modals/AddBoardModal";
 export { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
 export { useSyncProjectId } from "./hooks/useSyncProjectId";

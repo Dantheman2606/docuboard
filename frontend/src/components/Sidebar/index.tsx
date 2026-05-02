@@ -19,6 +19,7 @@ import { SectionTabs } from "./SectionTabs";
 import { DocumentsList } from "./DocumentsList";
 import { KanbanBoardsList } from "./KanbanBoardsList";
 import { LogoutButton } from "./LogoutButton";
+import { SettingsButton } from "./SettingsButton";
 import { AddBoardModal } from "./modals/AddBoardModal";
 import { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
 import { ActivityFeed } from "@/features/activity";
@@ -175,7 +176,8 @@ const Sidebar = () => {
         )}
       </ScrollArea>
 
-      <div className="px-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+      <div className="px-2 border-t border-gray-200 dark:border-gray-700 pt-2 space-y-2">
+        <SettingsButton isSidebarOpen={isSidebarOpen} />
         <ActivityButton 
           isSidebarOpen={isSidebarOpen}
           onClick={() => setIsActivityFeedOpen(true)}

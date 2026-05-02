@@ -31,6 +31,10 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
+      updateUser: (user: User) => {
+        set({ user });
+      },
+
       logout: () => {
         // 1. Reset Zustand state to initial values
         set({

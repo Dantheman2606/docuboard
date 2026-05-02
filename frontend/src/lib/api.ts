@@ -167,6 +167,19 @@ export interface AuthResponse {
   user: { id: string; username: string; email: string; name: string; role: string };
 }
 
+export interface UserProjectSummary {
+  id: string;
+  name: string;
+  color?: string;
+  role: 'owner' | 'admin' | 'editor' | 'viewer';
+}
+
+export interface UserSettingsResponse {
+  user: { id: string; username: string; email: string; name: string; role?: string };
+  projectCount: number;
+  projects: UserProjectSummary[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // API methods
 // ─────────────────────────────────────────────────────────────────────────────
@@ -391,5 +404,18 @@ export const api = {
     const params = query ? `?query=${encodeURIComponent(query)}` : '';
     const res = await apiFetch(`${API_BASE_URL}/users/search${params}`);
     return parseResponse<Array<{ _id: string; id: string; username: string; name: string }>>(res);
+  },
+
+  getUserSettings: async (): Promise<UserSettingsResponse> => {
+    const res = await apiFetch(`${API_BASE_URL}/users/me/settings`);
+    return parseResponse<UserSettingsResponse>(res);
+  },
+
+  updateMe: async (data: { username?: string; name?: string }): Promise<UserSettingsResponse['user']> => {
+    const res = await apiFetch(`${API_BASE_URL}/users/me`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return parseResponse<UserSettingsResponse['user']>(res);
   },
 };

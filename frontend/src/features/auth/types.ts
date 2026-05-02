@@ -16,6 +16,7 @@ export interface AuthState {
   currentProjectRole: Role | null;
   isAuthenticated: boolean;
   login: (user: User, token: string) => void;
+  updateUser: (user: User) => void;
   logout: () => void;
   setCurrentProjectRole: (role: Role | null) => void;
 }

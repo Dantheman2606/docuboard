@@ -3,7 +3,7 @@ import Head from "next/head";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, LogOut, Edit2 } from "lucide-react";
+import { PlusCircle, LogOut, Edit2, Settings } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuth } from "@/features/auth";
@@ -162,6 +162,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => router.push("/settings")}
+              variant="outline"
+              className="flex items-center gap-2 border-2"
+            >
+              <Settings size={18} />
+              Settings
+            </Button>
             <Button
               onClick={handleLogout}
               variant="outline"

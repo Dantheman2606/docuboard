@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 
 export const useAuth = () => {
   const router = useRouter();
-  const { user, token, currentProjectRole, isAuthenticated, login, logout, setCurrentProjectRole } = useAuthStore();
+  const { user, token, currentProjectRole, isAuthenticated, login, updateUser, logout, setCurrentProjectRole } = useAuthStore();
 
   const handleLogin = async (email: string, password: string) => {
     const data = await api.login(email, password);
@@ -31,6 +31,7 @@ export const useAuth = () => {
     isAuthenticated,
     login: handleLogin,
     signup: handleSignup,
+    updateUser,
     logout: handleLogout,
     setCurrentProjectRole,
   };

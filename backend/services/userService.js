@@ -78,3 +78,25 @@ exports.formatUser = (user) => ({
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
+
+/**
+ * Update user fields (username, name).
+ */
+exports.updateUser = async (userId, { username, name }) => {
+  const updates = {};
+
+  if (username !== undefined) {
+    const normalizedUsername = username.toLowerCase();
+    const existing = await User.findOne({ username: normalizedUsername, _id: { $ne: userId } });
+    if (existing) throw new AppError('Username already exists.', 409);
+    updates.username = normalizedUsername;
+  }
+
+  if (name !== undefined) {
+    updates.name = name.trim();
+  }
+
+  const user = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password');
+  if (!user) throw new AppError('User not found.', 404);
+  return user;
+};
