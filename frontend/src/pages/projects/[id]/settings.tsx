@@ -9,6 +9,15 @@ import { useUIStore } from "@/stores/uiStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import toast from "react-hot-toast";
 
 const roleOptions: ProjectMember["role"][] = ["admin", "editor", "viewer"];
@@ -19,6 +28,11 @@ export default function ProjectSettingsPage() {
   const projectId = typeof id === "string" ? id : "";
 
   const [activeTab, setActiveTab] = useState<"members" | "requests">("members");
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteName, setDeleteName] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const queryClient = useQueryClient();
   const { setCurrentProject } = useUIStore();
 
@@ -84,6 +98,44 @@ export default function ProjectSettingsPage() {
       toast.success("Member approved.");
     } catch (error: any) {
       toast.error(error.message || "Failed to approve request.");
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    try {
+      await api.removeProjectMember(projectId, userId);
+      await queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      toast.success("Member removed.");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to remove member.");
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    if (deleteName.trim() !== project.name.trim()) {
+      setDeleteError("Project name does not match.");
+      return;
+    }
+
+    if (!deletePassword.trim()) {
+      setDeleteError("Password is required.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      await api.deleteProject(projectId, { name: deleteName.trim(), password: deletePassword });
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project deleted.");
+      router.replace("/dashboard");
+    } catch (error: any) {
+      setDeleteError(error.message || "Failed to delete project.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -196,21 +248,30 @@ export default function ProjectSettingsPage() {
                         {member.role === "owner" ? (
                           <div className="text-sm font-semibold text-black">Owner</div>
                         ) : (
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => handleRoleChange(member.userId, value as ProjectMember["role"])}
-                          >
-                            <SelectTrigger className="w-[160px] border-2 border-gray-200">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {roleOptions.map((role) => (
-                                <SelectItem key={role} value={role}>
-                                  {role}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => handleRoleChange(member.userId, value as ProjectMember["role"])}
+                            >
+                              <SelectTrigger className="w-[160px] border-2 border-gray-200">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {roleOptions.map((role) => (
+                                  <SelectItem key={role} value={role}>
+                                    {role}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="outline"
+                              className="border-2 text-red-600 hover:text-red-700"
+                              onClick={() => handleRemoveMember(member.userId)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -261,9 +322,92 @@ export default function ProjectSettingsPage() {
                 </CardContent>
               </Card>
             )}
+
+            <Card className="border-2 border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-lg text-red-700">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-medium text-black">Delete this project</div>
+                  <div className="text-sm text-red-700">This action cannot be undone.</div>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteOpen(true)}
+                >
+                  Delete Project
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </Layout>
+
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[520px] border-2 border-red-600">
+          <DialogHeader>
+            <DialogTitle className="text-red-700">Delete Project</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Type the project name and your password to confirm deletion.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {deleteError && (
+              <div className="p-3 text-sm text-red-700 bg-red-100 border-2 border-red-600">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-black">Project Name</label>
+              <Input
+                value={deleteName}
+                onChange={(e) => setDeleteName(e.target.value)}
+                placeholder={project?.name || "Project name"}
+                className="h-11 border-2 border-gray-300 focus:border-red-600 focus:ring-0"
+                disabled={isDeleting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-black">Owner Password</label>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+                className="h-11 border-2 border-gray-300 focus:border-red-600 focus:ring-0"
+                disabled={isDeleting}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteOpen(false);
+                setDeleteName("");
+                setDeletePassword("");
+                setDeleteError("");
+              }}
+              className="border-2"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

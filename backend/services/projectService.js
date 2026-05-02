@@ -196,6 +196,45 @@ exports.updateMemberRole = async (projectId, memberId, role) => {
 };
 
 /**
+ * Remove a member from a project.
+ */
+exports.removeMember = async (projectId, memberId) => {
+  const project = await Project.findById(projectId);
+  if (!project) throw new AppError('Project not found.', 404);
+
+  const member = project.members.find((m) => m.userId.toString() === memberId);
+  if (!member) throw new AppError('Member not found.', 404);
+
+  if (member.role === 'owner') {
+    throw new AppError('Owner cannot be removed from the project.', 400);
+  }
+
+  project.members = project.members.filter((m) => m.userId.toString() !== memberId);
+  await project.save();
+  await project.populate('members.userId', 'name username');
+  return formatProject(project, null);
+};
+
+/**
+ * Leave a project as the current user.
+ */
+exports.leaveProject = async (projectId, userId) => {
+  const project = await Project.findById(projectId);
+  if (!project) throw new AppError('Project not found.', 404);
+
+  const member = project.members.find((m) => m.userId.toString() === userId);
+  if (!member) throw new AppError('You are not a member of this project.', 403);
+
+  if (member.role === 'owner') {
+    throw new AppError('Owner cannot leave the project.', 400);
+  }
+
+  project.members = project.members.filter((m) => m.userId.toString() !== userId);
+  await project.save();
+  return { message: 'Left project successfully.' };
+};
+
+/**
  * Request access to a project by code.
  */
 exports.requestJoinByCode = async (projectCode, userId) => {
@@ -277,15 +316,3 @@ exports.rejectJoinRequest = async (projectId, userId) => {
   return formatProject(project, null);
 };
 
-/**
- * Remove a member from a project.
- */
-exports.removeMember = async (projectId, memberId) => {
-  const project = await Project.findById(projectId);
-  if (!project) throw new AppError('Project not found.', 404);
-
-  project.members = project.members.filter((m) => m.userId.toString() !== memberId);
-  await project.save();
-  await project.populate('members.userId', 'name username');
-  return formatProject(project, null);
-};

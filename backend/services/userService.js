@@ -12,6 +12,15 @@ exports.findById = async (id) => {
 };
 
 /**
+ * Find a user by MongoDB _id, including the password field.
+ */
+exports.findByIdWithPassword = async (id) => {
+  const user = await User.findById(id).select('+password');
+  if (!user) throw new AppError('User not found.', 404);
+  return user;
+};
+
+/**
  * Find a user by email (includes password for auth comparison).
  */
 exports.findByEmailWithPassword = async (email) => {

@@ -238,8 +238,11 @@ export const api = {
     return parseResponse<Project>(res);
   },
 
-  deleteProject: async (id: string): Promise<void> => {
-    const res = await apiFetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
+  deleteProject: async (id: string, confirmation?: { name: string; password: string }): Promise<void> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify(confirmation || {}),
+    });
     await parseResponse<any>(res);
   },
 
@@ -263,6 +266,11 @@ export const api = {
   removeProjectMember: async (projectId: string, userId: string): Promise<{ members: ProjectMember[] }> => {
     const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
     return parseResponse<{ members: ProjectMember[] }>(res);
+  },
+
+  leaveProject: async (projectId: string): Promise<{ message: string }> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/leave`, { method: 'POST' });
+    return parseResponse<{ message: string }>(res);
   },
 
   // ── Project Join Requests ─────────────────────────────────────────────────

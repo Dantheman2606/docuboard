@@ -4,6 +4,8 @@ const router = express.Router();
 const Joi = require('joi');
 const authenticate = require('../middleware/auth');
 const { requireProjectMember } = require('../middleware/permission');
+const userService = require('../services/userService');
+const AppError = require('../utils/AppError');
 const { validate } = require('../middleware/validation');
 const projectService = require('../services/projectService');
 const { success } = require('../utils/apiResponse');
@@ -18,6 +20,11 @@ const updateProjectSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200),
   description: Joi.string().trim().max(1000).allow(''),
   color: Joi.string().trim(),
+});
+
+const deleteProjectSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).required(),
+  password: Joi.string().required(),
 });
 
 const joinRequestSchema = Joi.object({
@@ -82,9 +89,23 @@ router.put('/:id', requireProjectMember('editor'), validate(updateProjectSchema)
   }
 });
 
-// DELETE /api/projects/:id  (owner only)
-router.delete('/:id', requireProjectMember('owner'), async (req, res, next) => {
+// DELETE /api/projects/:id  (owner only, strict confirmation)
+router.delete('/:id', requireProjectMember('owner'), validate(deleteProjectSchema), async (req, res, next) => {
   try {
+    const project = await projectService.getProjectById(req.params.id, req.user.id);
+    const expectedName = project.name.trim();
+    const submittedName = (req.body.name || '').trim();
+
+    if (submittedName !== expectedName) {
+      return next(new AppError('Project name does not match.', 400));
+    }
+
+    const user = await userService.findByIdWithPassword(req.user.id);
+    const isMatch = await user.comparePassword(req.body.password);
+    if (!isMatch) {
+      return next(new AppError('Invalid password.', 401));
+    }
+
     const result = await projectService.deleteProject(req.params.id);
     return success(res, result);
   } catch (err) {
@@ -113,11 +134,21 @@ router.put('/:id/members/:memberId', requireProjectMember('owner'), async (req, 
   }
 });
 
-// DELETE /api/projects/:id/members/:memberId  (admin+ required)
-router.delete('/:id/members/:memberId', requireProjectMember('admin'), async (req, res, next) => {
+// DELETE /api/projects/:id/members/:memberId  (owner only)
+router.delete('/:id/members/:memberId', requireProjectMember('owner'), async (req, res, next) => {
   try {
     const project = await projectService.removeMember(req.params.id, req.params.memberId);
     return success(res, project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/leave  (member only)
+router.post('/:id/leave', requireProjectMember('viewer'), async (req, res, next) => {
+  try {
+    const result = await projectService.leaveProject(req.params.id, req.user.id);
+    return success(res, result);
   } catch (err) {
     next(err);
   }

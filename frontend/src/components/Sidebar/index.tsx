@@ -25,11 +25,12 @@ import { AddBoardModal } from "./modals/AddBoardModal";
 import { DeleteConfirmationDialog } from "./modals/DeleteConfirmationDialog";
 import { ActivityFeed } from "@/features/activity";
 import { ActivityButton } from "./ActivityButton";
+import toast from "react-hot-toast";
 
 const Sidebar = () => {
   useSyncProjectId();
   const router = useRouter();
-  const { currentProjectId, isSidebarOpen, toggleSidebar } = useUIStore();
+  const { currentProjectId, isSidebarOpen, toggleSidebar, setCurrentProject } = useUIStore();
   const { data: project } = useProject(currentProjectId || "");
   const { data: documents } = useDocuments(currentProjectId || "");
   const [activeSection, setActiveSection] = useState<"docs" | "kanban">("docs");
@@ -38,6 +39,7 @@ const Sidebar = () => {
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteBoardId, setDeleteBoardId] = useState<string | null>(null);
   const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
+  const [isLeaveOpen, setIsLeaveOpen] = useState(false);
   const { deleteDocument } = useDocumentStore();
   const queryClient = useQueryClient();
 
@@ -131,6 +133,22 @@ const Sidebar = () => {
     setDeleteDocId(null);
   };
 
+  const handleLeaveProject = async () => {
+    if (!currentProjectId) return;
+
+    try {
+      await api.leaveProject(currentProjectId);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setCurrentProject(null);
+      toast.success("You left the project.");
+      router.push("/dashboard");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to leave project.");
+    } finally {
+      setIsLeaveOpen(false);
+    }
+  };
+
   return (
     <aside
       className={cn(
@@ -184,6 +202,22 @@ const Sidebar = () => {
             projectId={currentProjectId}
           />
         )}
+        {project?.userRole && project.userRole !== "owner" && (
+          <div className="px-2">
+            <button
+              type="button"
+              className={cn(
+                "w-full flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md px-3 py-2",
+                !isSidebarOpen && "justify-center px-2"
+              )}
+              onClick={() => setIsLeaveOpen(true)}
+            >
+              <span className="text-sm font-medium">
+                {isSidebarOpen ? "Leave Project" : "Leave"}
+              </span>
+            </button>
+          </div>
+        )}
         <SettingsButton isSidebarOpen={isSidebarOpen} />
         <ActivityButton 
           isSidebarOpen={isSidebarOpen}
@@ -231,6 +265,15 @@ const Sidebar = () => {
         description="Are you sure you want to delete this board? All cards and data will be permanently removed. This action cannot be undone."
         onConfirm={handleDeleteBoard}
         onCancel={() => setDeleteBoardId(null)}
+      />
+
+      {/* Leave Project Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={isLeaveOpen}
+        title="Leave Project"
+        description="Are you sure you want to leave this project? You will lose access until re-added."
+        onConfirm={handleLeaveProject}
+        onCancel={() => setIsLeaveOpen(false)}
       />
     </aside>
   );
