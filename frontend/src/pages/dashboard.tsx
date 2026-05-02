@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PlusCircle, LogOut, Edit2 } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useUIStore } from "@/stores/uiStore";
+import { useAuth } from "@/features/auth";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ const projectColors = [
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { logout } = useAuth();
   const { data: projects = [], isLoading: projectsLoading, isError: projectsError } = useProjects();
   const queryClient = useQueryClient();
   const {currentProjectId, setCurrentProject} = useUIStore();
@@ -53,14 +55,6 @@ export default function DashboardPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState("");
 
-  // Check if user is logged in, redirect to landing if not
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      router.replace("/");
-    }
-  }, [router]);
-
   function projectSelect(projectId: string): void {
     setCurrentProject(projectId)
     router.push(`/projects/${projectId}/`)
@@ -76,15 +70,10 @@ export default function DashboardPage() {
     setError("");
 
     try {
-      // Get current user from localStorage
-      const user = localStorage.getItem("user");
-      const userId = user ? JSON.parse(user).id : null;
-
       const created = await api.createProject({
         name: newProject.name.trim(),
         description: newProject.description.trim(),
         color: newProject.color,
-        userId: userId,
       });
 
       // Invalidate projects query to refetch
@@ -145,8 +134,7 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    router.push("/");
+    logout();
   };
 
   return (

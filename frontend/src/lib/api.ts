@@ -1,57 +1,75 @@
 // /lib/api.ts
-// Commented out mock data - now using backend API
-// import { projects } from "./mockData";
 import { useDocumentStore } from "@/stores/documentStore";
+import { useAuthStore } from "@/features/auth/store/authStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Helper to detect if error is a connection failure
-const isConnectionError = (error: any): boolean => {
-  // Check for common connection error patterns
-  return (
-    error?.message?.includes('Failed to fetch') ||
-    error?.message?.includes('NetworkError') ||
-    error?.message?.includes('Network request failed') ||
-    error?.code === 'ECONNREFUSED' ||
-    error?.name === 'TypeError' && error?.message?.includes('fetch')
-  );
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const isConnectionError = (error: any): boolean =>
+  error?.message?.includes('Failed to fetch') ||
+  error?.message?.includes('NetworkError') ||
+  error?.message?.includes('Network request failed') ||
+  error?.code === 'ECONNREFUSED' ||
+  (error?.name === 'TypeError' && error?.message?.includes('fetch'));
+
+/** Get the JWT token from Zustand store (works outside React components too). */
+const getToken = (): string | null => {
+  try {
+    return useAuthStore.getState().token;
+  } catch {
+    return null;
+  }
 };
 
-// Wrapper for fetch that detects offline status
-const fetchWithOfflineDetection = async (url: string, options?: RequestInit): Promise<Response> => {
+/** Build default headers, always injecting Authorization if a token exists. */
+const buildHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+};
+
+/** Fetch with offline detection and automatic auth header injection. */
+const apiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const headers = buildHeaders(options.headers as Record<string, string> | undefined);
   try {
-    const response = await fetch(url, options);
-    
-    // If fetch succeeds, we're definitely online
-    // Use try-catch to avoid errors during store initialization
+    const response = await fetch(url, { ...options, headers });
     try {
       const store = useDocumentStore.getState();
-      if (store && !store.isOnline) {
-        console.log('🌐 Connection detected - setting online');
-        store.setIsOnline(true);
-      }
-    } catch (storeError) {
-      // Store not ready yet, ignore
-    }
-    
+      if (store && !store.isOnline) store.setIsOnline(true);
+    } catch { /* store not ready */ }
     return response;
   } catch (error: any) {
-    // Check if this is a connection error
     if (isConnectionError(error)) {
-      console.log('📴 Connection error detected - setting offline');
-      // Use try-catch to avoid errors during store initialization
-      try {
-        const store = useDocumentStore.getState();
-        if (store) {
-          store.setIsOnline(false);
-        }
-      } catch (storeError) {
-        // Store not ready yet, ignore
-      }
+      try { useDocumentStore.getState()?.setIsOnline(false); } catch { /* ignore */ }
     }
     throw error;
   }
 };
+
+/**
+ * Parse a backend response.
+ * New endpoints return { success, data } — unwrap data.
+ * Legacy endpoints (if any) return the payload directly.
+ */
+const parseResponse = async <T>(response: Response): Promise<T> => {
+  const json = await response.json();
+  if (!response.ok) {
+    throw new Error(json.error || json.message || `Request failed with status ${response.status}`);
+  }
+  // Unwrap { success: true, data: ... } envelope
+  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types (unchanged — kept compatible with the existing frontend)
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface ProjectMember {
   userId: string;
@@ -66,10 +84,7 @@ export interface Project {
   name: string;
   description: string;
   color?: string;
-  docs: {
-    id: string;
-    title: string;
-  }[];
+  docs: { id: string; title: string }[];
   members?: ProjectMember[];
   userRole?: 'owner' | 'admin' | 'editor' | 'viewer';
 }
@@ -79,6 +94,7 @@ export interface DocumentVersion {
   content: string;
   timestamp: string;
   author: string;
+  authorName?: string;
   description: string;
   _id?: string;
 }
@@ -104,11 +120,7 @@ export interface Notification {
     documentId?: string;
     boardId?: string;
     cardId?: string;
-    mentionedBy?: {
-      id: string;
-      name: string;
-      username: string;
-    };
+    mentionedBy?: { id: string; name: string; username: string };
     context?: string;
   };
   timestamp: string;
@@ -120,11 +132,7 @@ export interface KanbanBoard {
   id: string;
   name: string;
   projectId: string;
-  columns: Record<string, {
-    id: string;
-    title: string;
-    cardIds: string[];
-  }>;
+  columns: Record<string, { id: string; title: string; cardIds: string[] }>;
   cards: Record<string, {
     id: string;
     title: string;
@@ -144,264 +152,225 @@ export interface Activity {
   projectId: string;
   boardId?: string;
   cardId?: string;
-  type: 'card_created' | 'card_updated' | 'card_moved' | 'card_deleted' | 'board_created' | 'board_updated' | 'board_deleted' | 'document_created' | 'document_updated' | 'document_deleted';
+  type:
+    | 'card_created' | 'card_updated' | 'card_moved' | 'card_deleted'
+    | 'board_created' | 'board_updated' | 'board_deleted'
+    | 'document_created' | 'document_updated' | 'document_deleted';
   action: string;
-  user: {
-    id?: string;
-    name: string;
-    username?: string;
-  };
+  user: { id?: string; name: string; username?: string };
   metadata?: Record<string, any>;
   timestamp: string;
 }
 
+export interface AuthResponse {
+  token: string;
+  user: { id: string; username: string; name: string; role: string };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API methods
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const api = {
-  // Projects
-  getProjects: async (userId?: string): Promise<Project[]> => {
-    const url = userId ? `${API_BASE_URL}/projects?userId=${userId}` : `${API_BASE_URL}/projects`;
-    const response = await fetchWithOfflineDetection(url);
-    if (!response.ok) throw new Error('Failed to fetch projects');
-    return response.json();
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  login: async (username: string, password: string): Promise<AuthResponse> => {
+    const res = await apiFetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    return parseResponse<AuthResponse>(res);
   },
 
-  getProject: async (id: string, userId?: string): Promise<Project> => {
-    const url = userId ? `${API_BASE_URL}/projects/${id}?userId=${userId}` : `${API_BASE_URL}/projects/${id}`;
-    const response = await fetchWithOfflineDetection(url);
-    if (!response.ok) throw new Error('Project not found');
-    return response.json();
+  signup: async (username: string, password: string, name: string, role?: string): Promise<AuthResponse> => {
+    const res = await apiFetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password, name, role }),
+    });
+    return parseResponse<AuthResponse>(res);
+  },
+
+  getMe: async (): Promise<AuthResponse['user']> => {
+    const res = await apiFetch(`${API_BASE_URL}/auth/me`);
+    return parseResponse<AuthResponse['user']>(res);
+  },
+
+  // ── Projects ─────────────────────────────────────────────────────────────
+  getProjects: async (_userId?: string): Promise<Project[]> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects`);
+    return parseResponse<Project[]>(res);
+  },
+
+  getProject: async (id: string, _userId?: string): Promise<Project> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${id}`);
+    return parseResponse<Project>(res);
   },
 
   createProject: async (data: Partial<Project> & { userId?: string }): Promise<Project> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create project');
-    return response.json();
+    const { userId: _unused, ...body } = data as any;
+    const res = await apiFetch(`${API_BASE_URL}/projects`, { method: 'POST', body: JSON.stringify(body) });
+    return parseResponse<Project>(res);
   },
 
   updateProject: async (id: string, data: Partial<Project>): Promise<Project> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update project');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return parseResponse<Project>(res);
   },
 
-  // Documents
+  deleteProject: async (id: string): Promise<void> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${id}`, { method: 'DELETE' });
+    await parseResponse<any>(res);
+  },
+
+  // ── Project Members ───────────────────────────────────────────────────────
+  addProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    });
+    return parseResponse<{ members: ProjectMember[] }>(res);
+  },
+
+  updateProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+    return parseResponse<{ members: ProjectMember[] }>(res);
+  },
+
+  removeProjectMember: async (projectId: string, userId: string): Promise<{ members: ProjectMember[] }> => {
+    const res = await apiFetch(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
+    return parseResponse<{ members: ProjectMember[] }>(res);
+  },
+
+  // ── Documents ─────────────────────────────────────────────────────────────
   getDocuments: async (projectId: string): Promise<Document[]> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/project/${projectId}`);
-    if (!response.ok) throw new Error('Failed to fetch documents');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/project/${projectId}`);
+    return parseResponse<Document[]>(res);
   },
 
   getDocument: async (id: string): Promise<Document> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`);
-    if (!response.ok) throw new Error('Document not found');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/${id}`);
+    return parseResponse<Document>(res);
   },
 
   createDocument: async (data: Partial<Document>): Promise<Document> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create document');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents`, { method: 'POST', body: JSON.stringify(data) });
+    return parseResponse<Document>(res);
   },
 
   updateDocument: async (id: string, data: Partial<Document>): Promise<Document> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update document');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return parseResponse<Document>(res);
   },
 
   deleteDocument: async (id: string): Promise<void> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to delete document');
+    const res = await apiFetch(`${API_BASE_URL}/documents/${id}`, { method: 'DELETE' });
+    await parseResponse<any>(res);
   },
 
-  // Kanban Boards
-  getKanbanBoards: async (projectId: string): Promise<KanbanBoard[]> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/project/${projectId}`);
-    if (!response.ok) throw new Error('Failed to fetch kanban boards');
-    return response.json();
-  },
-
-  getKanbanBoard: async (boardId: string): Promise<KanbanBoard> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`);
-    if (!response.ok) throw new Error('Failed to fetch kanban board');
-    return response.json();
-  },
-
-  createKanbanBoard: async (data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.error || 'Failed to create kanban board');
-    }
-    return response.json();
-  },
-
-  updateKanbanBoard: async (boardId: string, data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to update kanban board');
-    return response.json();
-  },
-
-  deleteKanbanBoard: async (boardId: string): Promise<void> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/kanban/${boardId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to delete kanban board');
-  },
-
-  // Authentication
-  login: async (username: string, password: string): Promise<{
-    id: string;
-    username: string;
-    name: string;
-    role: string;
-  }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to login');
-    }
-    return response.json();
-  },
-
-  signup: async (username: string, password: string, name: string, role?: string): Promise<{
-    id: string;
-    username: string;
-    name: string;
-    role: string;
-  }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, name, role }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to signup');
-    }
-    return response.json();
-  },
-
-  // Version Management
-  createVersion: async (documentId: string, data: {
-    content: string;
-    author: string;
-    description?: string;
-  }): Promise<DocumentVersion> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create version');
-    return response.json();
+  // ── Versions ──────────────────────────────────────────────────────────────
+  createVersion: async (documentId: string, data: { content: string; author: string; description?: string }): Promise<DocumentVersion> => {
+    const res = await apiFetch(`${API_BASE_URL}/documents/${documentId}/versions`, { method: 'POST', body: JSON.stringify(data) });
+    return parseResponse<DocumentVersion>(res);
   },
 
   getVersions: async (documentId: string): Promise<DocumentVersion[]> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions`);
-    if (!response.ok) throw new Error('Failed to fetch versions');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/${documentId}/versions`);
+    return parseResponse<DocumentVersion[]>(res);
   },
 
   getVersion: async (documentId: string, versionNumber: number): Promise<DocumentVersion> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}`);
-    if (!response.ok) throw new Error('Failed to fetch version');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}`);
+    return parseResponse<DocumentVersion>(res);
   },
 
   restoreVersion: async (documentId: string, versionNumber: number): Promise<Document> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}/restore`, {
-      method: 'POST',
-    });
-    if (!response.ok) throw new Error('Failed to restore version');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/documents/${documentId}/versions/${versionNumber}/restore`, { method: 'POST' });
+    return parseResponse<Document>(res);
   },
 
-  // Activity Feed
+  // ── Kanban ────────────────────────────────────────────────────────────────
+  getKanbanBoards: async (projectId: string): Promise<KanbanBoard[]> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban/project/${projectId}`);
+    return parseResponse<KanbanBoard[]>(res);
+  },
+
+  getKanbanBoard: async (boardId: string): Promise<KanbanBoard> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban/${boardId}`);
+    return parseResponse<KanbanBoard>(res);
+  },
+
+  createKanbanBoard: async (data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban`, { method: 'POST', body: JSON.stringify(data) });
+    return parseResponse<KanbanBoard>(res);
+  },
+
+  updateKanbanBoard: async (boardId: string, data: Partial<KanbanBoard>): Promise<KanbanBoard> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban/${boardId}`, { method: 'PUT', body: JSON.stringify(data) });
+    return parseResponse<KanbanBoard>(res);
+  },
+
+  deleteKanbanBoard: async (boardId: string): Promise<void> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban/${boardId}`, { method: 'DELETE' });
+    await parseResponse<any>(res);
+  },
+
+  createKanbanCard: async (boardId: string, data: {
+    title: string;
+    description?: string;
+    assignee?: string;
+    labels?: string[];
+    dueDate?: string | null;
+    columnId?: string;
+    projectId?: string;
+  }): Promise<KanbanBoard['cards'][string]> => {
+    const res = await apiFetch(`${API_BASE_URL}/kanban/${boardId}/cards`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return parseResponse<KanbanBoard['cards'][string]>(res);
+  },
+
+
   getActivities: async (projectId: string, options?: { limit?: number; offset?: number; boardId?: string }): Promise<Activity[]> => {
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
     if (options?.boardId) params.append('boardId', options.boardId);
-    
-    const url = `${API_BASE_URL}/activity/project/${projectId}${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetchWithOfflineDetection(url);
-    if (!response.ok) throw new Error('Failed to fetch activities');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/activity/project/${projectId}${params.toString() ? `?${params}` : ''}`);
+    return parseResponse<Activity[]>(res);
   },
 
   createActivity: async (data: Partial<Activity>): Promise<Activity> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/activity`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create activity');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/activity`, { method: 'POST', body: JSON.stringify(data) });
+    return parseResponse<Activity>(res);
   },
 
-  // Notifications
+  // ── Notifications ─────────────────────────────────────────────────────────
   getNotifications: async (userId: string, options?: { limit?: number; offset?: number; unreadOnly?: boolean }): Promise<Notification[]> => {
     const params = new URLSearchParams();
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
     if (options?.unreadOnly) params.append('unreadOnly', 'true');
-    
-    const url = `${API_BASE_URL}/notifications/user/${userId}${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetchWithOfflineDetection(url);
-    if (!response.ok) throw new Error('Failed to fetch notifications');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/notifications/user/${userId}${params.toString() ? `?${params}` : ''}`);
+    return parseResponse<Notification[]>(res);
   },
 
   getUnreadCount: async (userId: string): Promise<number> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/user/${userId}/unread-count`);
-    if (!response.ok) throw new Error('Failed to fetch unread count');
-    const data = await response.json();
+    const res = await apiFetch(`${API_BASE_URL}/notifications/user/${userId}/unread-count`);
+    const data = await parseResponse<{ count: number }>(res);
     return data.count;
   },
 
   markNotificationAsRead: async (notificationId: string): Promise<Notification> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/${notificationId}/read`, {
-      method: 'PATCH',
-    });
-    if (!response.ok) throw new Error('Failed to mark notification as read');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/notifications/${notificationId}/read`, { method: 'PATCH' });
+    return parseResponse<Notification>(res);
   },
 
   markAllNotificationsAsRead: async (userId: string): Promise<void> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/user/${userId}/read-all`, {
-      method: 'PATCH',
-    });
-    if (!response.ok) throw new Error('Failed to mark all notifications as read');
+    const res = await apiFetch(`${API_BASE_URL}/notifications/user/${userId}/read-all`, { method: 'PATCH' });
+    await parseResponse<any>(res);
   },
 
   createMentionNotifications: async (data: {
@@ -413,48 +382,14 @@ export const api = {
     boardId?: string;
     cardId?: string;
   }): Promise<{ notificationsCreated: number }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/create-mentions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Failed to create mention notifications');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/notifications/create-mentions`, { method: 'POST', body: JSON.stringify(data) });
+    return parseResponse<{ notificationsCreated: number }>(res);
   },
 
-  searchUsers: async (query?: string): Promise<Array<{ _id: string; username: string; name: string }>> => {
+  // ── Users ─────────────────────────────────────────────────────────────────
+  searchUsers: async (query?: string): Promise<Array<{ _id: string; id: string; username: string; name: string }>> => {
     const params = query ? `?query=${encodeURIComponent(query)}` : '';
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/notifications/users/search${params}`);
-    if (!response.ok) throw new Error('Failed to search users');
-    return response.json();
-  },
-
-  // Project Members
-  addProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, role }),
-    });
-    if (!response.ok) throw new Error('Failed to add project member');
-    return response.json();
-  },
-
-  updateProjectMember: async (projectId: string, userId: string, role: string): Promise<{ members: ProjectMember[] }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role }),
-    });
-    if (!response.ok) throw new Error('Failed to update project member');
-    return response.json();
-  },
-
-  removeProjectMember: async (projectId: string, userId: string): Promise<{ members: ProjectMember[] }> => {
-    const response = await fetchWithOfflineDetection(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) throw new Error('Failed to remove project member');
-    return response.json();
+    const res = await apiFetch(`${API_BASE_URL}/users/search${params}`);
+    return parseResponse<Array<{ _id: string; id: string; username: string; name: string }>>(res);
   },
 };

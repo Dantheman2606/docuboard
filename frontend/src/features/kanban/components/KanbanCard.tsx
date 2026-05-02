@@ -8,6 +8,7 @@ import { InlineEditor } from "./InlineEditor";
 import { useKanbanStore } from "@/stores/kanbanStore";
 import { extractMentions } from "@/lib/mentionUtils";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import toast from "react-hot-toast";
 import {
   Dialog,
@@ -41,6 +42,7 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
   const { can } = usePermissions();
   const canEdit = can('edit');
   const canDelete = can('delete');
+  const currentUser = useAuthStore((state) => state.user);
   const { updateCard, updateCardWithActivity, deleteCard } = useKanbanStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
@@ -77,24 +79,20 @@ export function KanbanCard({ card, index, boardId }: KanbanCardProps) {
       // Check for mentions in the description
       if (card.description) {
         const mentionedUsernames = extractMentions(card.description);
-        if (mentionedUsernames.length > 0) {
+        if (mentionedUsernames.length > 0 && currentUser) {
           try {
-            const user = localStorage.getItem('user');
-            if (user) {
-              const userObj = JSON.parse(user);
-              await api.createMentionNotifications({
-                mentionedUsernames,
-                mentionedBy: {
-                  id: userObj.id,
-                  name: userObj.name,
-                  username: userObj.username,
-                },
-                context: card.description.substring(0, 150),
-                boardId: boardId,
-                cardId: card.id,
-              });
-              toast.success(`Mentioned ${mentionedUsernames.length} user(s) in card`);
-            }
+            await api.createMentionNotifications({
+              mentionedUsernames,
+              mentionedBy: {
+                id: currentUser.id,
+                name: currentUser.name,
+                username: currentUser.username,
+              },
+              context: card.description.substring(0, 150),
+              boardId: boardId,
+              cardId: card.id,
+            });
+            toast.success(`Mentioned ${mentionedUsernames.length} user(s) in card`);
           } catch (error) {
             console.error('Failed to create mention notifications:', error);
           }

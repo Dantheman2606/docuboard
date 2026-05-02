@@ -1,279 +1,111 @@
 // routes/projects.js
 const express = require('express');
 const router = express.Router();
-const Project = require('../models/Project');
-const Document = require('../models/Document');
+const Joi = require('joi');
+const authenticate = require('../middleware/auth');
+const { requireProjectMember } = require('../middleware/permission');
+const { validate } = require('../middleware/validation');
+const projectService = require('../services/projectService');
+const { success } = require('../utils/apiResponse');
 
-// Get all projects
-router.get('/', async (req, res) => {
+const createProjectSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).required(),
+  description: Joi.string().trim().max(1000).allow('').default(''),
+  color: Joi.string().trim().default('#3B82F6'),
+});
+
+const updateProjectSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200),
+  description: Joi.string().trim().max(1000).allow(''),
+  color: Joi.string().trim(),
+});
+
+const memberSchema = Joi.object({
+  userId: Joi.string().required(),
+  role: Joi.string().valid('owner', 'admin', 'editor', 'viewer').default('viewer'),
+});
+
+// All routes require authentication
+router.use(authenticate);
+
+// GET /api/projects
+router.get('/', async (req, res, next) => {
   try {
-    const { userId } = req.query;
-    
-    // If userId is provided, only fetch projects where user is a member
-    let query = {};
-    if (userId) {
-      query = { 'members.userId': userId };
-    }
-    
-    const projects = await Project.find(query).sort({ updatedAt: -1 }).populate('members.userId', 'name username');
-    
-    // Get document IDs for each project
-    const projectsWithDocs = await Promise.all(
-      projects.map(async (project) => {
-        const docs = await Document.find({ projectId: project.id }).select('id title');
-        
-        // Find user's role in this project
-        const userMember = userId ? project.members.find(m => m.userId._id.toString() === userId) : null;
-        
-        return {
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          color: project.color,
-          docs: docs.map(d => ({ id: d.id, title: d.title })),
-          members: project.members.map(m => ({
-            userId: m.userId._id,
-            name: m.userId.name,
-            username: m.userId.username,
-            role: m.role,
-            addedAt: m.addedAt
-          })),
-          userRole: userMember ? userMember.role : null,
-          createdAt: project.createdAt,
-          updatedAt: project.updatedAt
-        };
-      })
-    );
-    
-    res.json(projectsWithDocs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const projects = await projectService.getProjects(req.user.id);
+    return success(res, projects);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Get single project
-router.get('/:id', async (req, res) => {
+// GET /api/projects/:id
+router.get('/:id', async (req, res, next) => {
   try {
-    const { userId } = req.query;
-    const project = await Project.findOne({ id: req.params.id }).populate('members.userId', 'name username');
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    
-    // Check if user is a member of this project (if userId is provided)
-    if (userId) {
-      const userMember = project.members.find(m => m.userId._id.toString() === userId);
-      if (!userMember) {
-        return res.status(403).json({ error: 'Access denied. You are not a member of this project.' });
-      }
-    }
-    
-    const docs = await Document.find({ projectId: project.id }).select('id title');
-    
-    // Find user's role in this project
-    const userMember = userId ? project.members.find(m => m.userId._id.toString() === userId) : null;
-    
-    res.json({
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      color: project.color,
-      docs: docs.map(d => ({ id: d.id, title: d.title })),
-      members: project.members.map(m => ({
-        userId: m.userId._id,
-        name: m.userId.name,
-        username: m.userId.username,
-        role: m.role,
-        addedAt: m.addedAt
-      })),
-      userRole: userMember ? userMember.role : null,
-      createdAt: project.createdAt,
-      updatedAt: project.updatedAt
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.getProjectById(req.params.id, req.user.id);
+    return success(res, project);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Create project
-router.post('/', async (req, res) => {
+// POST /api/projects
+router.post('/', validate(createProjectSchema), async (req, res, next) => {
   try {
-    const projectId = `p${Date.now()}`;
-    const { userId, ...projectData } = req.body;
-    
-    // Create project with creator as owner
-    const project = new Project({
-      id: projectId,
-      ...projectData,
-      createdBy: userId,
-      members: userId ? [{
-        userId: userId,
-        role: 'owner',
-        addedAt: new Date()
-      }] : [],
-      updatedAt: new Date()
-    });
-    await project.save();
-
-    // Create default Kanban board for the project
-    const KanbanBoard = require('../models/KanbanBoard');
-    const boardId = `board_${Date.now()}`;
-    const defaultBoard = new KanbanBoard({
-      id: boardId,
-      name: 'Main Board',
-      projectId: projectId,
-      columns: {
-        todo: { id: 'todo', title: 'To Do', cardIds: [] },
-        inprogress: { id: 'inprogress', title: 'In Progress', cardIds: [] },
-        done: { id: 'done', title: 'Done', cardIds: [] },
-      },
-      cards: {},
-      columnOrder: ['todo', 'inprogress', 'done'],
-    });
-    await defaultBoard.save();
-
-    // Create default document for the project
-    const docId = `doc_${Date.now()}`;
-    const defaultDoc = new Document({
-      id: docId,
-      title: 'Welcome Document',
-      content: '<h1>Welcome to your new project!</h1><p>Start writing here...</p>',
-      projectId: projectId
-    });
-    await defaultDoc.save();
-
-    res.status(201).json(project);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.createProject(req.body, req.user.id);
+    return success(res, project, 201);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Update project
-router.put('/:id', async (req, res) => {
+// PUT /api/projects/:id  (editor+ required)
+router.put('/:id', requireProjectMember('editor'), validate(updateProjectSchema), async (req, res, next) => {
   try {
-    const project = await Project.findOneAndUpdate(
-      { id: req.params.id },
-      { ...req.body, updatedAt: new Date() },
-      { new: true }
-    );
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    res.json(project);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.updateProject(req.params.id, req.body);
+    return success(res, project);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Delete project
-router.delete('/:id', async (req, res) => {
+// DELETE /api/projects/:id  (owner only)
+router.delete('/:id', requireProjectMember('owner'), async (req, res, next) => {
   try {
-    const project = await Project.findOneAndDelete({ id: req.params.id });
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    res.json({ message: 'Project deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const result = await projectService.deleteProject(req.params.id);
+    return success(res, result);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Add member to project
-router.post('/:id/members', async (req, res) => {
+// POST /api/projects/:id/members  (admin+ required)
+router.post('/:id/members', requireProjectMember('admin'), validate(memberSchema), async (req, res, next) => {
   try {
     const { userId, role } = req.body;
-    const project = await Project.findOne({ id: req.params.id });
-    
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    // Check if user is already a member
-    const existingMember = project.members.find(m => m.userId.toString() === userId);
-    if (existingMember) {
-      return res.status(400).json({ error: 'User is already a member' });
-    }
-
-    project.members.push({
-      userId,
-      role: role || 'viewer',
-      addedAt: new Date()
-    });
-
-    await project.save();
-    await project.populate('members.userId', 'name username');
-    
-    res.json({
-      members: project.members.map(m => ({
-        userId: m.userId._id,
-        name: m.userId.name,
-        username: m.userId.username,
-        role: m.role,
-        addedAt: m.addedAt
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.addMember(req.params.id, userId, role);
+    return success(res, project);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Update member role
-router.put('/:id/members/:userId', async (req, res) => {
+// PUT /api/projects/:id/members/:memberId  (admin+ required)
+router.put('/:id/members/:memberId', requireProjectMember('admin'), async (req, res, next) => {
   try {
-    const { role } = req.body;
-    const project = await Project.findOne({ id: req.params.id });
-    
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    const member = project.members.find(m => m.userId.toString() === req.params.userId);
-    if (!member) {
-      return res.status(404).json({ error: 'Member not found' });
-    }
-
-    member.role = role;
-    await project.save();
-    await project.populate('members.userId', 'name username');
-    
-    res.json({
-      members: project.members.map(m => ({
-        userId: m.userId._id,
-        name: m.userId.name,
-        username: m.userId.username,
-        role: m.role,
-        addedAt: m.addedAt
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.updateMemberRole(req.params.id, req.params.memberId, req.body.role);
+    return success(res, project);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Remove member from project
-router.delete('/:id/members/:userId', async (req, res) => {
+// DELETE /api/projects/:id/members/:memberId  (admin+ required)
+router.delete('/:id/members/:memberId', requireProjectMember('admin'), async (req, res, next) => {
   try {
-    const project = await Project.findOne({ id: req.params.id });
-    
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-
-    project.members = project.members.filter(m => m.userId.toString() !== req.params.userId);
-    await project.save();
-    await project.populate('members.userId', 'name username');
-    
-    res.json({
-      members: project.members.map(m => ({
-        userId: m.userId._id,
-        name: m.userId.name,
-        username: m.userId.username,
-        role: m.role,
-        addedAt: m.addedAt
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const project = await projectService.removeMember(req.params.id, req.params.memberId);
+    return success(res, project);
+  } catch (err) {
+    next(err);
   }
 });
 

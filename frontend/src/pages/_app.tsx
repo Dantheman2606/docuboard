@@ -7,39 +7,34 @@ import { useRouter } from "next/router";
 import { Toaster } from "react-hot-toast";
 import { checkLocalStorageStatus } from "@/stores/documentStore";
 import { NotificationProvider } from "@/features/activity";
-
-
+import { useAuthStore } from "@/features/auth/store/authStore";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
 
+  // Zustand persist rehydrates synchronously, but we need one tick for SSR
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const { isAuthenticated } = useAuthStore.getState();
     const publicRoutes = ["/", "/login"];
     const isPublicRoute = publicRoutes.includes(router.pathname);
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else if (!isPublicRoute) {
+
+    if (!isAuthenticated && !isPublicRoute) {
       router.replace("/login");
     }
+
     setIsLoading(false);
 
-    // Make helper function available in console for debugging
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       (window as any).checkDocumentStorage = checkLocalStorageStatus;
-      console.log('💡 Tip: Run checkDocumentStorage() in console to check localStorage status');
     }
   }, [router]);
 
   if (isLoading) return null;
 
-  // Public routes don't need authentication
   const publicRoutes = ["/", "/login"];
   const isPublicRoute = publicRoutes.includes(router.pathname);
-  
+
   if (isPublicRoute) {
     return (
       <Providers>
@@ -48,8 +43,7 @@ export default function App({ Component, pageProps }: AppProps) {
       </Providers>
     );
   }
-  
-  // Authenticated routes get notification polling
+
   return (
     <Providers>
       <NotificationProvider>

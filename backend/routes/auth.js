@@ -1,103 +1,70 @@
 // routes/auth.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const Joi = require('joi');
+const { validate } = require('../middleware/validation');
+const authenticate = require('../middleware/auth');
+const userService = require('../services/userService');
+const { signToken } = require('../utils/jwt');
+const { success, error } = require('../utils/apiResponse');
+const AppError = require('../utils/AppError');
 
-// Login route
-router.post('/login', async (req, res) => {
+const loginSchema = Joi.object({
+  username: Joi.string().trim().required(),
+  password: Joi.string().required(),
+});
+
+const signupSchema = Joi.object({
+  username: Joi.string().trim().alphanum().min(3).max(30).required(),
+  password: Joi.string().min(6).required(),
+  name: Joi.string().trim().min(1).max(100).required(),
+  role: Joi.string().valid('owner', 'admin', 'editor', 'viewer').default('viewer'),
+});
+
+// POST /api/auth/login
+router.post('/login', validate(loginSchema), async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
+    const user = await userService.findByUsernameWithPassword(username);
+    if (!user) return next(new AppError('Invalid credentials.', 401));
 
-    // Find user by username
-    const user = await User.findOne({ username });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return next(new AppError('Invalid credentials.', 401));
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const token = signToken({ id: user._id.toString(), username: user.username, role: user.role });
 
-    // Simple password comparison (not hashed for simplicity as requested)
-    if (user.password !== password) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Return user data without password
-    const userData = {
-      id: user._id,
-      username: user.username,
-      name: user.name,
-      role: user.role,
-    };
-
-    res.json(userData);
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
-  }
-});
-
-// Signup route
-router.post('/signup', async (req, res) => {
-  try {
-    const { username, password, name, role } = req.body;
-
-    if (!username || !password || !name) {
-      return res.status(400).json({ error: 'Username, password, and name are required' });
-    }
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.status(409).json({ error: 'Username already exists' });
-    }
-
-    // Create new user
-    const newUser = new User({
-      username,
-      password, // Not hashing for simplicity as requested
-      name,
-      role: role || 'viewer',
+    return success(res, {
+      token,
+      user: userService.formatUser(user),
     });
-
-    await newUser.save();
-
-    // Return user data without password
-    const userData = {
-      id: newUser._id,
-      username: newUser.username,
-      name: newUser.name,
-      role: newUser.role,
-    };
-
-    res.status(201).json(userData);
-  } catch (error) {
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'Server error during signup' });
+  } catch (err) {
+    next(err);
   }
 });
 
-// Get current user info (optional - for checking if logged in)
-router.get('/me', async (req, res) => {
+// POST /api/auth/signup
+router.post('/signup', validate(signupSchema), async (req, res, next) => {
   try {
-    const { userId } = req.query;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
-    }
+    const newUser = await userService.createUser(req.body);
+    const token = signToken({ id: newUser._id.toString(), username: newUser.username, role: newUser.role });
 
-    const user = await User.findById(userId).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    return success(res, {
+      token,
+      user: userService.formatUser(newUser),
+    }, 201);
+  } catch (err) {
+    next(err);
+  }
+});
 
-    res.json(user);
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({ error: 'Server error' });
+// GET /api/auth/me  (requires valid JWT)
+router.get('/me', authenticate, async (req, res, next) => {
+  try {
+    const user = await userService.findById(req.user.id);
+    return success(res, userService.formatUser(user));
+  } catch (err) {
+    next(err);
   }
 });
 

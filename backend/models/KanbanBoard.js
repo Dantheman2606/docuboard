@@ -1,35 +1,24 @@
 // models/KanbanBoard.js
 const mongoose = require('mongoose');
 
+const columnSchema = new mongoose.Schema({
+  id: { type: String, required: true }, // logical column key (e.g. 'todo')
+  title: { type: String, required: true },
+  cardIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Card' }],
+}, { _id: false });
+
 const kanbanBoardSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  projectId: { type: String, required: true, ref: 'Project' },
+  name: { type: String, required: true, trim: true },
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
   columns: {
     type: Map,
-    of: {
-      id: String,
-      title: String,
-      cardIds: [String]
-    }
-  },
-  cards: {
-    type: Map,
-    of: {
-      id: String,
-      title: String,
-      description: String,
-      assignee: String,
-      labels: [String],
-      dueDate: String
-    }
+    of: columnSchema,
   },
   columnOrder: [String],
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+}, {
+  timestamps: true,
 });
 
-// Create compound index for projectId (not unique anymore)
-kanbanBoardSchema.index({ projectId: 1 });
+kanbanBoardSchema.index({ projectId: 1, createdAt: 1 });
 
 module.exports = mongoose.model('KanbanBoard', kanbanBoardSchema);

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDocumentStore } from "@/stores/documentStore";
+import { api } from "@/lib/api";
 
 interface AddDocModalProps {
   isOpen: boolean;
@@ -21,28 +22,49 @@ interface AddDocModalProps {
 
 export function AddDocModal({ isOpen, onClose, projectId }: AddDocModalProps) {
   const [title, setTitle] = useState("");
-  const { addDocument } = useDocumentStore();
+  const [isCreating, setIsCreating] = useState(false);
+  const { setDocument } = useDocumentStore();
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (title.trim()) {
-      const newDoc = await addDocument(projectId, title.trim());
+    if (!title.trim() || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      // Call the backend directly so we get the real MongoDB ObjectId back
+      const newDoc = await api.createDocument({
+        title: title.trim(),
+        content: "",
+        projectId,
+      });
+
+      // Persist the new document in the local store so the editor can load it immediately
+      setDocument({
+        id: newDoc.id,
+        title: newDoc.title,
+        content: newDoc.content || "",
+        projectId: newDoc.projectId,
+        createdAt: newDoc.createdAt,
+        updatedAt: newDoc.updatedAt,
+      });
+
       setTitle("");
       onClose();
-      
-      // Invalidate and refetch queries to ensure data is fresh
+
+      // Invalidate queries so the sidebar refreshes with the new doc
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["documents", projectId] }),
         queryClient.invalidateQueries({ queryKey: ["project", projectId] }),
       ]);
-      
-      // Small delay to ensure backend has fully processed the request
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
-      // Navigate to the new document
+
+      // Navigate to the new document using the real backend ID
       router.push(`/projects/${projectId}/docs/${newDoc.id}`);
+    } catch (err: any) {
+      console.error("Failed to create document:", err);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -72,14 +94,15 @@ export function AddDocModal({ isOpen, onClose, projectId }: AddDocModalProps) {
               placeholder="Enter document title..."
               className="w-full"
               autoFocus
+              disabled={isCreating}
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={handleClose}>
+            <Button type="button" variant="ghost" onClick={handleClose} disabled={isCreating}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim()}>
-              Create Document
+            <Button type="submit" disabled={!title.trim() || isCreating}>
+              {isCreating ? "Creating..." : "Create Document"}
             </Button>
           </DialogFooter>
         </form>

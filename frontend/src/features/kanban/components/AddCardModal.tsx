@@ -14,6 +14,7 @@ import { useKanbanStore } from "@/stores/kanbanStore";
 import type { Card } from "@/lib/mockData";
 import { extractMentions } from "@/lib/mentionUtils";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import toast from "react-hot-toast";
 import { InlineEditor } from "./InlineEditor";
 
@@ -48,6 +49,7 @@ const labelColors: Record<string, string> = {
 
 export function AddCardModal({ isOpen, onClose, boardId, columnId }: AddCardModalProps) {
   const { addCard } = useKanbanStore();
+  const currentUser = useAuthStore((state) => state.user);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -60,8 +62,8 @@ export function AddCardModal({ isOpen, onClose, boardId, columnId }: AddCardModa
     
     if (!title.trim()) return;
 
-    const newCard: Card = {
-      id: `c${Date.now()}`,
+    const tempCard: Card = {
+      id: `c${Date.now()}`, // fallback only, real ID comes from backend
       title: title.trim(),
       description: description.trim() || undefined,
       assignee: assignee.trim() || undefined,
@@ -69,29 +71,26 @@ export function AddCardModal({ isOpen, onClose, boardId, columnId }: AddCardModa
       labels: selectedLabels.length > 0 ? selectedLabels : undefined,
     };
 
-    addCard(boardId, columnId, newCard);
+    // addCard is now async — awaiting gives us the real MongoDB ObjectId
+    const createdCard = await addCard(boardId, columnId, tempCard);
     
-    // Check for mentions in the description
+    // Check for mentions in the description using the REAL card ID
     if (description.trim()) {
       const mentionedUsernames = extractMentions(description);
-      if (mentionedUsernames.length > 0) {
+      if (mentionedUsernames.length > 0 && currentUser) {
         try {
-          const user = localStorage.getItem('user');
-          if (user) {
-            const userObj = JSON.parse(user);
-            await api.createMentionNotifications({
-              mentionedUsernames,
-              mentionedBy: {
-                id: userObj.id,
-                name: userObj.name,
-                username: userObj.username,
-              },
-              context: description.substring(0, 150),
-              boardId: boardId,
-              cardId: newCard.id,
-            });
-            toast.success(`Mentioned ${mentionedUsernames.length} user(s) in new card`);
-          }
+          await api.createMentionNotifications({
+            mentionedUsernames,
+            mentionedBy: {
+              id: currentUser.id,
+              name: currentUser.name,
+              username: currentUser.username,
+            },
+            context: description.substring(0, 150),
+            boardId: boardId,
+            cardId: createdCard.id, // real ObjectId from backend
+          });
+          toast.success(`Mentioned ${mentionedUsernames.length} user(s) in new card`);
         } catch (error) {
           console.error('Failed to create mention notifications:', error);
         }

@@ -3,18 +3,17 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Card } from "@/lib/mockData";
 import { api, type KanbanBoard } from "@/lib/api";
+import { useAuthStore } from "@/features/auth/store/authStore";
 
-// Helper function to get current user from localStorage
+// Helper function to get current user from Zustand auth store
 const getCurrentUser = () => {
-  if (typeof window === 'undefined') return { name: 'Unknown User' };
   try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
+    const user = useAuthStore.getState().user;
+    if (user) {
       return {
         id: user.id,
         name: user.name || user.username || 'Unknown User',
-        username: user.username
+        username: user.username,
       };
     }
   } catch (e) {
@@ -35,7 +34,7 @@ interface KanbanState {
   ) => void;
   updateCard: (boardId: string, cardId: string, updates: Partial<Card>) => void;
   updateCardWithActivity: (boardId: string, cardId: string, updates: Partial<Card>) => void;
-  addCard: (boardId: string, columnId: string, card: Card) => void;
+  addCard: (boardId: string, columnId: string, card: Card) => Promise<Card>;
   deleteCard: (boardId: string, cardId: string) => void;
   syncBoardToBackend: (boardId: string) => Promise<void>;
 }
@@ -231,58 +230,73 @@ export const useKanbanStore = create<KanbanState>()(
         }, 0);
       },
 
-      addCard: (boardId, columnId, card) => {
-        set((state) => {
-          const board = state.boards[boardId];
-          if (!board) return state;
+      addCard: async (boardId, columnId, card) => {
+        try {
+          // Call the backend first to get a real MongoDB ObjectId
+          const createdCard = await api.createKanbanCard(boardId, {
+            title: card.title,
+            description: card.description || '',
+            assignee: card.assignee || '',
+            labels: card.labels || [],
+            dueDate: card.dueDate || null,
+            columnId,
+          });
 
-          const column = board.columns[columnId];
-          if (!column) return state;
+          // Update local state with the real backend ID
+          const realId = createdCard.id;
+          set((state) => {
+            const board = state.boards[boardId];
+            if (!board) return state;
 
-          return {
-            boards: {
-              ...state.boards,
-              [boardId]: {
-                ...board,
-                cards: {
-                  ...board.cards,
-                  [card.id]: card,
-                },
-                columns: {
-                  ...board.columns,
-                  [columnId]: {
-                    ...column,
-                    cardIds: [...column.cardIds, card.id],
+            const column = board.columns[columnId];
+            if (!column) return state;
+
+            return {
+              boards: {
+                ...state.boards,
+                [boardId]: {
+                  ...board,
+                  cards: {
+                    ...board.cards,
+                    [realId]: { ...createdCard },
+                  },
+                  columns: {
+                    ...board.columns,
+                    [columnId]: {
+                      ...column,
+                      cardIds: [...column.cardIds, realId],
+                    },
                   },
                 },
               },
-            },
-          };
-        });
-        
-        // Sync to backend after state update
-        setTimeout(() => {
-          const board = useKanbanStore.getState().boards[boardId];
-          if (board) {
-            api.updateKanbanBoard(boardId, board as any).catch(console.error);
-            
-            // Log activity for new card
+            };
+          });
+
+          return createdCard;
+        } catch (err) {
+          console.error('Failed to create card:', err);
+          // Fallback: add to local state only with temp ID (no mentions will work)
+          set((state) => {
+            const board = state.boards[boardId];
+            if (!board) return state;
             const column = board.columns[columnId];
-            api.createActivity({
-              projectId: board.projectId,
-              boardId: boardId,
-              cardId: card.id,
-              type: 'card_created',
-              action: `created card "${card.title}" in ${column?.title || 'column'}`,
-              user: getCurrentUser(),
-              metadata: {
-                cardTitle: card.title,
-                columnTitle: column?.title,
-                columnId: columnId
-              }
-            }).catch(console.error);
-          }
-        }, 0);
+            if (!column) return state;
+            return {
+              boards: {
+                ...state.boards,
+                [boardId]: {
+                  ...board,
+                  cards: { ...board.cards, [card.id]: card },
+                  columns: {
+                    ...board.columns,
+                    [columnId]: { ...column, cardIds: [...column.cardIds, card.id] },
+                  },
+                },
+              },
+            };
+          });
+          return card;
+        }
       },
 
       deleteCard: (boardId, cardId) => {

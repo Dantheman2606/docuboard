@@ -2,72 +2,40 @@
 const mongoose = require('mongoose');
 
 const activitySchema = new mongoose.Schema({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true
-  },
-  projectId: {
-    type: String,
-    required: true,
-    index: true
-  },
-  boardId: {
-    type: String,
-    index: true
-  },
-  cardId: {
-    type: String
-  },
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
+  boardId: { type: mongoose.Schema.Types.ObjectId, ref: 'KanbanBoard', index: true },
+  cardId: { type: mongoose.Schema.Types.ObjectId, ref: 'Card' },
   type: {
     type: String,
     required: true,
     enum: [
-      'card_created',
-      'card_updated',
-      'card_moved',
-      'card_deleted',
-      'board_created',
-      'board_updated',
-      'board_deleted',
-      'document_created',
-      'document_updated',
-      'document_deleted',
-      'user_mention'
-    ]
+      'card_created', 'card_updated', 'card_moved', 'card_deleted',
+      'board_created', 'board_updated', 'board_deleted',
+      'document_created', 'document_updated', 'document_deleted',
+      'user_mention',
+    ],
   },
-  action: {
-    type: String,
-    required: true
-  },
+  action: { type: String, required: true },
   user: {
-    id: String,
-    name: String,
-    username: String
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    name: { type: String },
+    username: { type: String },
   },
   mentionedUsers: [{
-    id: String,
+    id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     name: String,
-    username: String
+    username: String,
   }],
   metadata: {
     type: Map,
-    of: mongoose.Schema.Types.Mixed
+    of: mongoose.Schema.Types.Mixed,
   },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-    index: true
-  }
+  timestamp: { type: Date, default: Date.now, index: true },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
-// Compound index for efficient querying
 activitySchema.index({ projectId: 1, timestamp: -1 });
 activitySchema.index({ boardId: 1, timestamp: -1 });
 
-const Activity = mongoose.model('Activity', activitySchema);
-
-module.exports = Activity;
+module.exports = mongoose.model('Activity', activitySchema);

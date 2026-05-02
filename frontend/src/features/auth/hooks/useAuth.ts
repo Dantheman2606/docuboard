@@ -5,30 +5,18 @@ import { useRouter } from 'next/router';
 
 export const useAuth = () => {
   const router = useRouter();
-  const { user, currentProjectRole, isAuthenticated, login, logout, setCurrentProjectRole } = useAuthStore();
+  const { user, token, currentProjectRole, isAuthenticated, login, logout, setCurrentProjectRole } = useAuthStore();
 
   const handleLogin = async (username: string, password: string) => {
-    try {
-      const userData = await api.login(username, password);
-      const user: any = userData;
-      login(user);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
-    } catch (error) {
-      throw error;
-    }
+    const data = await api.login(username, password);
+    login(data.user, data.token);
+    return data;
   };
 
   const handleSignup = async (username: string, password: string, name: string, role?: string) => {
-    try {
-      const userData = await api.signup(username, password, name, role);
-      const user: any = userData;
-      login(user);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
-    } catch (error) {
-      throw error;
-    }
+    const data = await api.signup(username, password, name, role);
+    login(data.user, data.token);
+    return data;
   };
 
   const handleLogout = () => {
@@ -38,6 +26,7 @@ export const useAuth = () => {
 
   return {
     user,
+    token,
     currentProjectRole,
     isAuthenticated,
     login: handleLogin,

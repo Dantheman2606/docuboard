@@ -23,6 +23,7 @@ import { DocumentHeader } from "./DocumentHeader";
 import { RemoteCursor } from "../RemoteCursor";
 import { useDocumentStore } from "@/stores/documentStore";
 import { api, type DocumentVersion } from "@/lib/api";
+import { useAuthStore } from "@/features/auth/store/authStore";
 import toast from "react-hot-toast";
 import { usePermissions } from "@/features/auth/hooks";
 
@@ -48,6 +49,7 @@ interface DocumentEditorProps {
 export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
   const { can } = usePermissions();
   const canEdit = can('edit');
+  const currentUser = useAuthStore((state) => state.user);
   const { documents, updateDocumentContent, updateDocumentTitle, isOnline, setDocument } =
     useDocumentStore();
   const queryClient = useQueryClient();
@@ -196,10 +198,8 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
       wsRef.current = null;
     }
 
-    const user = localStorage.getItem('user');
-    const userData = user ? JSON.parse(user) : null;
-    const userId = userData?._id || userData?.id || Math.random().toString(36).substring(7);
-    const userName = userData?.name || 'Anonymous';
+    const userId = currentUser?.id || Math.random().toString(36).substring(7);
+    const userName = currentUser?.name || 'Anonymous';
 
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000';
     const ws = new WebSocket(`${wsUrl}/collab`);
@@ -413,9 +413,8 @@ export function DocumentEditor({ documentId, projectId }: DocumentEditorProps) {
     
     setIsSaving(true);
     try {
-      const user = localStorage.getItem('user');
-      const userName = user ? JSON.parse(user).name : 'Unknown';
-      const userObj = user ? JSON.parse(user) : null;
+      const userName = currentUser?.name || 'Unknown';
+      const userObj = currentUser;
       
       // Get editor content as JSON
       const content = JSON.stringify(editor.getJSON());

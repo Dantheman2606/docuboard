@@ -1,155 +1,123 @@
 // routes/kanban.js
 const express = require('express');
 const router = express.Router();
-const KanbanBoard = require('../models/KanbanBoard');
+const authenticate = require('../middleware/auth');
+const kanbanService = require('../services/kanbanService');
+const cardService = require('../services/cardService');
+const { success } = require('../utils/apiResponse');
 
-// Get all kanban boards for a project
-router.get('/project/:projectId', async (req, res) => {
+router.use(authenticate);
+
+// GET /api/kanban/project/:projectId
+router.get('/project/:projectId', async (req, res, next) => {
   try {
-    const boards = await KanbanBoard.find({ projectId: req.params.projectId })
-      .sort({ createdAt: 1 });
-    
-    const boardsArray = boards.map(board => ({
-      id: board.id,
-      name: board.name,
-      projectId: board.projectId,
-      columns: Object.fromEntries(board.columns),
-      cards: Object.fromEntries(board.cards),
-      columnOrder: board.columnOrder,
-      createdAt: board.createdAt,
-      updatedAt: board.updatedAt
-    }));
-    
-    res.json(boardsArray);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const boards = await kanbanService.getBoardsByProject(req.params.projectId);
+    return success(res, boards);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Get single kanban board by ID
-router.get('/:boardId', async (req, res) => {
+// GET /api/kanban/:boardId
+router.get('/:boardId', async (req, res, next) => {
   try {
-    const board = await KanbanBoard.findOne({ id: req.params.boardId });
-    
-    if (!board) {
-      return res.status(404).json({ error: 'Board not found' });
-    }
-    
-    const boardObj = {
-      id: board.id,
-      name: board.name,
-      projectId: board.projectId,
-      columns: Object.fromEntries(board.columns),
-      cards: Object.fromEntries(board.cards),
-      columnOrder: board.columnOrder,
-      createdAt: board.createdAt,
-      updatedAt: board.updatedAt
-    };
-    
-    res.json(boardObj);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const board = await kanbanService.getBoardById(req.params.boardId);
+    return success(res, board);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Create new kanban board
-router.post('/', async (req, res) => {
+// POST /api/kanban
+router.post('/', async (req, res, next) => {
   try {
-    const boardId = req.body.id || `board_${Date.now()}`;
-    
-    // Default columns if not provided
-    const defaultColumns = {
-      todo: { id: 'todo', title: 'To Do', cardIds: [] },
-      inprogress: { id: 'inprogress', title: 'In Progress', cardIds: [] },
-      done: { id: 'done', title: 'Done', cardIds: [] }
-    };
-    
-    // Convert columns object to Map
-    const columnsData = req.body.columns || defaultColumns;
-    const columnsMap = new Map(Object.entries(columnsData));
-    
-    // Convert cards object to Map
-    const cardsData = req.body.cards || {};
-    const cardsMap = new Map(Object.entries(cardsData));
-    
-    const board = new KanbanBoard({
-      id: boardId,
-      name: req.body.name || 'New Board',
+    const board = await kanbanService.createBoard({
+      name: req.body.name,
       projectId: req.body.projectId,
-      columns: columnsMap,
-      cards: cardsMap,
-      columnOrder: req.body.columnOrder || ['todo', 'inprogress', 'done']
+      columnOrder: req.body.columnOrder,
+      columns: req.body.columns,
     });
-    
-    await board.save();
-    
-    const boardObj = {
-      id: board.id,
-      name: board.name,
-      projectId: board.projectId,
-      columns: Object.fromEntries(board.columns),
-      cards: Object.fromEntries(board.cards),
-      columnOrder: board.columnOrder,
-      createdAt: board.createdAt,
-      updatedAt: board.updatedAt
-    };
-    
-    res.status(201).json(boardObj);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    return success(res, board, 201);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Update kanban board (content or name)
-router.put('/:boardId', async (req, res) => {
+// PUT /api/kanban/:boardId
+router.put('/:boardId', async (req, res, next) => {
   try {
-    const updateData = { ...req.body, updatedAt: new Date() };
-    
-    // Convert columns and cards to Maps if they exist in the request
-    if (req.body.columns) {
-      updateData.columns = new Map(Object.entries(req.body.columns));
-    }
-    if (req.body.cards) {
-      updateData.cards = new Map(Object.entries(req.body.cards));
-    }
-    
-    const board = await KanbanBoard.findOneAndUpdate(
-      { id: req.params.boardId },
-      updateData,
-      { new: true }
-    );
-    
-    if (!board) {
-      return res.status(404).json({ error: 'Board not found' });
-    }
-    
-    const boardObj = {
-      id: board.id,
-      name: board.name,
-      projectId: board.projectId,
-      columns: Object.fromEntries(board.columns),
-      cards: Object.fromEntries(board.cards),
-      columnOrder: board.columnOrder,
-      createdAt: board.createdAt,
-      updatedAt: board.updatedAt
-    };
-    
-    res.json(boardObj);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const board = await kanbanService.updateBoard(req.params.boardId, req.body);
+    return success(res, board);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Delete kanban board
-router.delete('/:boardId', async (req, res) => {
+// DELETE /api/kanban/:boardId
+router.delete('/:boardId', async (req, res, next) => {
   try {
-    const board = await KanbanBoard.findOneAndDelete({ id: req.params.boardId });
-    if (!board) {
-      return res.status(404).json({ error: 'Board not found' });
-    }
-    res.json({ message: 'Board deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const result = await kanbanService.deleteBoard(req.params.boardId);
+    return success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ===== Card sub-routes =====
+
+// GET /api/kanban/:boardId/cards
+router.get('/:boardId/cards', async (req, res, next) => {
+  try {
+    const cards = await cardService.getCardsByBoard(req.params.boardId);
+    return success(res, cards);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/kanban/:boardId/cards
+router.post('/:boardId/cards', async (req, res, next) => {
+  try {
+    const card = await cardService.createCard({
+      ...req.body,
+      boardId: req.params.boardId,
+      createdBy: req.user.id,
+      userId: req.user.id,
+      authorName: req.user.username,
+    });
+    return success(res, card, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/kanban/:boardId/cards/:cardId
+router.put('/:boardId/cards/:cardId', async (req, res, next) => {
+  try {
+    const card = await cardService.updateCard(req.params.cardId, req.body);
+    return success(res, card);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/kanban/:boardId/cards/:cardId/move
+router.post('/:boardId/cards/:cardId/move', async (req, res, next) => {
+  try {
+    const card = await cardService.moveCard(req.params.cardId, req.body);
+    return success(res, card);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/kanban/:boardId/cards/:cardId
+router.delete('/:boardId/cards/:cardId', async (req, res, next) => {
+  try {
+    const result = await cardService.deleteCard(req.params.cardId);
+    return success(res, result);
+  } catch (err) {
+    next(err);
   }
 });
 
