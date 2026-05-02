@@ -1,6 +1,7 @@
 // /lib/api.ts
 import { useDocumentStore } from "@/stores/documentStore";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import type { Role } from "@/features/auth/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -173,7 +174,7 @@ export interface Activity {
 
 export interface AuthResponse {
   token: string;
-  user: { id: string; username: string; email: string; name: string; role: string };
+  user: { id: string; username: string; email: string; name: string; role: Role };
 }
 
 export interface UserProjectSummary {
@@ -184,7 +185,7 @@ export interface UserProjectSummary {
 }
 
 export interface UserSettingsResponse {
-  user: { id: string; username: string; email: string; name: string; role?: string };
+  user: { id: string; username: string; email: string; name: string; role?: Role };
   projectCount: number;
   projects: UserProjectSummary[];
 }
