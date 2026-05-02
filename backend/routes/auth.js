@@ -10,12 +10,13 @@ const { success, error } = require('../utils/apiResponse');
 const AppError = require('../utils/AppError');
 
 const loginSchema = Joi.object({
-  username: Joi.string().trim().required(),
+  email: Joi.string().trim().email().required(),
   password: Joi.string().required(),
 });
 
 const signupSchema = Joi.object({
   username: Joi.string().trim().alphanum().min(3).max(30).required(),
+  email: Joi.string().trim().email().required(),
   password: Joi.string().min(6).required(),
   name: Joi.string().trim().min(1).max(100).required(),
   role: Joi.string().valid('owner', 'admin', 'editor', 'viewer').default('viewer'),
@@ -24,9 +25,9 @@ const signupSchema = Joi.object({
 // POST /api/auth/login
 router.post('/login', validate(loginSchema), async (req, res, next) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    const user = await userService.findByUsernameWithPassword(username);
+    const user = await userService.findByEmailWithPassword(email);
     if (!user) return next(new AppError('Invalid credentials.', 401));
 
     const isMatch = await user.comparePassword(password);

@@ -7,37 +7,38 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth";
 
 const demoUsers = [
-  { username: "john_owner", password: "password123", name: "John Doe", role: "Owner" },
-  { username: "jane_admin", password: "password123", name: "Jane Smith", role: "Admin" },
-  { username: "bob_editor", password: "password123", name: "Bob Johnson", role: "Editor" },
-  { username: "alice_viewer", password: "password123", name: "Alice Williams", role: "Viewer" },
+  { username: "john_owner", email: "john_owner@docuboard.com", password: "password123", name: "John Doe", role: "Owner" },
+  { username: "jane_admin", email: "jane_admin@docuboard.com", password: "password123", name: "Jane Smith", role: "Admin" },
+  { username: "bob_editor", email: "bob_editor@docuboard.com", password: "password123", name: "Bob Johnson", role: "Editor" },
+  { username: "alice_viewer", email: "alice_viewer@docuboard.com", password: "password123", name: "Alice Williams", role: "Viewer" },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, signup } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSignup, setShowSignup] = useState(false);
   const [signupData, setSignupData] = useState({
     username: "",
+    email: "",
     password: "",
     name: "",
     role: "viewer",
   });
 
   const selectDemoUser = (user: typeof demoUsers[0]) => {
-    setUsername(user.username);
+    setEmail(user.email);
     setPassword(user.password);
     setError("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError("Please enter username and password");
+    if (!email || !password) {
+      setError("Please enter email and password");
       return;
     }
 
@@ -45,7 +46,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await login(username, password);
+      await login(email, password);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -56,7 +57,7 @@ export default function LoginPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupData.username || !signupData.password || !signupData.name) {
+    if (!signupData.username || !signupData.email || !signupData.password || !signupData.name) {
       setError("Please fill in all fields");
       return;
     }
@@ -67,6 +68,7 @@ export default function LoginPage() {
     try {
       await signup(
         signupData.username,
+        signupData.email,
         signupData.password,
         signupData.name,
         signupData.role
@@ -120,6 +122,17 @@ export default function LoginPage() {
                     value={signupData.username}
                     onChange={(e) => setSignupData({ ...signupData, username: e.target.value })}
                     placeholder="Choose a username"
+                    className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-black">Email</label>
+                  <Input
+                    value={signupData.email}
+                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                    placeholder="Enter your email"
                     className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                     disabled={isLoading}
                   />
@@ -201,7 +214,7 @@ export default function LoginPage() {
               Sign in to start managing your documents
             </p>
             <p className="text-center text-xs text-gray-500 mt-2">
-              Demo: john_owner / password123
+              Demo: john_owner@docuboard.com / password123
             </p>
           </CardHeader>
           <CardContent>
@@ -242,11 +255,11 @@ export default function LoginPage() {
               )}
               
               <div className="space-y-2">
-                <label className="text-sm font-medium text-black">Username</label>
+                <label className="text-sm font-medium text-black">Email</label>
                 <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
                   className="h-11 px-4 border-2 border-gray-300 focus:border-black focus:ring-0"
                   disabled={isLoading}
                 />

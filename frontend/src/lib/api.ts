@@ -164,7 +164,7 @@ export interface Activity {
 
 export interface AuthResponse {
   token: string;
-  user: { id: string; username: string; name: string; role: string };
+  user: { id: string; username: string; email: string; name: string; role: string };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,18 +173,18 @@ export interface AuthResponse {
 
 export const api = {
   // ── Auth ─────────────────────────────────────────────────────────────────
-  login: async (username: string, password: string): Promise<AuthResponse> => {
+  login: async (email: string, password: string): Promise<AuthResponse> => {
     const res = await apiFetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email, password }),
     });
     return parseResponse<AuthResponse>(res);
   },
 
-  signup: async (username: string, password: string, name: string, role?: string): Promise<AuthResponse> => {
+  signup: async (username: string, email: string, password: string, name: string, role?: string): Promise<AuthResponse> => {
     const res = await apiFetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
-      body: JSON.stringify({ username, password, name, role }),
+      body: JSON.stringify({ username, email, password, name, role }),
     });
     return parseResponse<AuthResponse>(res);
   },

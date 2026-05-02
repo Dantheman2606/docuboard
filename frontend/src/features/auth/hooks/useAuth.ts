@@ -7,14 +7,14 @@ export const useAuth = () => {
   const router = useRouter();
   const { user, token, currentProjectRole, isAuthenticated, login, logout, setCurrentProjectRole } = useAuthStore();
 
-  const handleLogin = async (username: string, password: string) => {
-    const data = await api.login(username, password);
+  const handleLogin = async (email: string, password: string) => {
+    const data = await api.login(email, password);
     login(data.user, data.token);
     return data;
   };
 
-  const handleSignup = async (username: string, password: string, name: string, role?: string) => {
-    const data = await api.signup(username, password, name, role);
+  const handleSignup = async (username: string, email: string, password: string, name: string, role?: string) => {
+    const data = await api.signup(username, email, password, name, role);
     login(data.user, data.token);
     return data;
   };

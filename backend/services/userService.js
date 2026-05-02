@@ -12,10 +12,10 @@ exports.findById = async (id) => {
 };
 
 /**
- * Find a user by username (includes password for auth comparison).
+ * Find a user by email (includes password for auth comparison).
  */
-exports.findByUsernameWithPassword = async (username) => {
-  return User.findOne({ username: username.toLowerCase() }).select('+password');
+exports.findByEmailWithPassword = async (email) => {
+  return User.findOne({ email: email.toLowerCase() }).select('+password');
 };
 
 /**
@@ -26,13 +26,26 @@ exports.findByUsername = async (username) => {
 };
 
 /**
+ * Find a user by email without password.
+ */
+exports.findByEmail = async (email) => {
+  return User.findOne({ email: email.toLowerCase() }).select('-password');
+};
+
+/**
  * Create a new user. Password is hashed by the User model pre-save hook.
  */
-exports.createUser = async ({ username, password, name, role }) => {
-  const existing = await User.findOne({ username: username.toLowerCase() });
-  if (existing) throw new AppError('Username already exists.', 409);
+exports.createUser = async ({ username, email, password, name, role }) => {
+  const normalizedUsername = username.toLowerCase();
+  const normalizedEmail = email.toLowerCase();
 
-  const user = new User({ username, password, name, role: role || 'viewer' });
+  const existingUsername = await User.findOne({ username: normalizedUsername });
+  if (existingUsername) throw new AppError('Username already exists.', 409);
+
+  const existingEmail = await User.findOne({ email: normalizedEmail });
+  if (existingEmail) throw new AppError('Email already exists.', 409);
+
+  const user = new User({ username: normalizedUsername, email: normalizedEmail, password, name, role: role || 'viewer' });
   await user.save();
 
   const userObj = user.toObject();
@@ -59,6 +72,7 @@ exports.searchUsers = async (query = '', limit = 10) => {
 exports.formatUser = (user) => ({
   id: user._id.toString(),
   username: user.username,
+  email: user.email,
   name: user.name,
   role: user.role,
   createdAt: user.createdAt,
